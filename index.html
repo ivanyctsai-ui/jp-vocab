@@ -1,0 +1,2858 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>和語研習社｜線上日文字典與智慧單字卡</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter, Noto Sans JP, Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans TC"', '"Noto Sans JP"', 'sans-serif'],
+            jp: ['"Noto Sans JP"', '"Noto Sans TC"', 'sans-serif'],
+          },
+          colors: {
+            washi: '#F7F6F2',
+            ink: '#1E293B',
+            indigoJp: '#3730A3',
+            vermilion: '#DC2626',
+            matcha: '#059669',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* 基礎日式柔和風格設定 */
+    body {
+      background-color: #F7F6F2;
+      color: #1E293B;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior-y: none;
+    }
+
+    /* Ruby 振假名微調 */
+    ruby {
+      ruby-align: center;
+    }
+    rt {
+      font-size: 0.52em;
+      color: #64748B;
+      font-weight: 500;
+      user-select: none;
+    }
+
+    /* 純 CSS 日文音調階梯折線（教科書風格） */
+    .pitch-container {
+      display: inline-flex;
+      align-items: baseline;
+      font-family: "Noto Sans JP", sans-serif;
+      letter-spacing: 0.04em;
+      line-height: 1.4;
+      padding-top: 4px;
+    }
+    .pitch-mora {
+      position: relative;
+      display: inline-block;
+      padding: 2px 1px 0 1px;
+      border-top: 2px solid transparent;
+      border-right: 2px solid transparent;
+      border-left: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+    /* 高音線 */
+    .pitch-high {
+      border-top-color: #DC2626;
+    }
+    /* 由低轉高處的微幅上升線 */
+    .pitch-rise {
+      border-left-color: #DC2626;
+      border-top-left-radius: 2px;
+    }
+    /* 音調核下降處（折線向下） */
+    .pitch-drop {
+      border-right-color: #DC2626;
+      border-top-right-radius: 2px;
+      padding-right: 3px;
+      margin-right: 1px;
+    }
+    /* 尾高型提示圓點 */
+    .pitch-particle-dot {
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      border-radius: 9999px;
+      background-color: #94A3B8;
+      margin-left: 2px;
+      vertical-align: middle;
+    }
+
+    /* 3D 單字卡翻面效果 */
+    .card-scene {
+      perspective: 1200px;
+      touch-action: pan-y;
+    }
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .card-inner.is-flipped {
+      transform: rotateY(180deg);
+    }
+    .card-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: 1.5rem;
+    }
+    .card-face-back {
+      transform: rotateY(180deg);
+    }
+
+    /* 拖曳外層動畫 */
+    .swipe-wrapper {
+      will-change: transform, opacity;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .swipe-wrapper.spring-back {
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s ease;
+    }
+    .swipe-wrapper.fly-out {
+      transition: transform 0.32s ease-out, opacity 0.28s ease-out;
+    }
+
+    /* 載入旋轉動畫 */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* 捲軸美化 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94A3B8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- 頂部導覽列 -->
+  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-stone-200 shadow-sm">
+    <div class="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <!-- 品牌標題 -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-700 text-white flex items-center justify-center font-jp font-bold text-lg shadow-sm">
+            和
+          </div>
+          <div>
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-tight">
+              和語研習社
+            </h1>
+            <p class="text-[11px] text-slate-500">線上即時日文字典・音調視覺化・智慧單字卡</p>
+          </div>
+        </div>
+        <!-- 手機版快捷統計 -->
+        <div class="sm:hidden flex items-center gap-1.5 text-xs bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full font-medium">
+          <span>不熟</span>
+          <span id="mobile-unfamiliar-count" class="font-bold">0</span>
+        </div>
+      </div>
+
+      <!-- 三大分頁切換按鈕 -->
+      <nav class="grid grid-cols-3 sm:flex items-center gap-1.5 bg-stone-100 p-1 rounded-2xl">
+        <button id="tab-btn-dict" onclick="switchTab('dict')" class="tab-btn px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5">
+          <span>1. 字典查詞</span>
+        </button>
+        <button id="tab-btn-manage" onclick="switchTab('manage')" class="tab-btn px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5">
+          <span>2. 單字本管理</span>
+          <span id="nav-unfamiliar-badge" class="hidden sm:inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-bold rounded-full bg-rose-100 text-rose-700">0</span>
+        </button>
+        <button id="tab-btn-quiz" onclick="switchTab('quiz')" class="tab-btn px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5">
+          <span>3. 單字卡測驗</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主內容區塊 -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-5 sm:py-7">
+
+    <!-- ==================== 分頁 1：字典查詞（線上 API + 最近查詢紀錄） ==================== -->
+    <section id="view-dict" class="space-y-5">
+      <!-- 搜尋列與手動新增 -->
+      <div class="bg-white rounded-2xl border border-stone-200 p-4 sm:p-5 shadow-sm">
+        <div class="flex flex-col sm:flex-row gap-3">
+          <div class="relative flex-1">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
+              </svg>
+            </div>
+            <input
+              id="dict-search-input"
+              type="text"
+              autocomplete="off"
+              placeholder="輸入日文漢字、平假名或英文關鍵字即時線上查詢（例：落ちる、図書館、開ける）..."
+              class="w-full pl-10 pr-10 py-3 rounded-xl border border-stone-300 bg-stone-50/70 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-sm sm:text-base transition"
+            />
+            <!-- 載入中轉圈指示器 -->
+            <div id="dict-search-spinner" class="hidden absolute inset-y-0 right-9 flex items-center pr-1">
+              <div class="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full spinner"></div>
+            </div>
+            <button
+              id="dict-search-clear"
+              onclick="clearDictSearch()"
+              class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+              title="清除搜尋"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <button
+            onclick="openAddWordModal()"
+            class="px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap"
+          >
+            <span>＋ 手動新增單字</span>
+          </button>
+        </div>
+
+        <!-- 動詞活用形簡易提示（偵測到 た / て / ない / ます 等結尾時顯示） -->
+        <div id="verb-conjugation-hint" class="hidden mt-3 px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+          <span>💡</span>
+          <span>偵測到常見活用變化結尾（如 た・て・ない・ます），若查無結果，請嘗試輸入<strong>動詞或形容詞原形（辭書形）</strong>。</span>
+        </div>
+
+        <!-- 線上字典來源狀態列 -->
+        <div class="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+          <div class="flex items-center gap-1.5">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>已連線公開日文字典 API（Jotoba / Jisho 即時查詢・查閱即永久存入本機）</span>
+          </div>
+          <span id="dict-api-status" class="font-medium text-slate-500"></span>
+        </div>
+      </div>
+
+      <!-- 單字詳情展示卡片（點擊任一單字後展開，含快速微調音調核） -->
+      <div id="dict-detail-panel" class="hidden bg-white rounded-2xl border-2 border-indigo-200 p-5 sm:p-6 shadow-md transition-all">
+        <!-- 由 JS 動態渲染 -->
+      </div>
+
+      <!-- 搜尋結果 / 最近查詢紀錄（Recent Lookups） -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h2 id="dict-list-heading" class="text-sm font-bold text-slate-700 flex items-center gap-2">
+            最近查詢紀錄（Recent Lookups）
+          </h2>
+          <span id="dict-match-count" class="text-xs text-slate-500"></span>
+        </div>
+        <div id="dict-results-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          <!-- 由 JS 動態渲染 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 分頁 2：單字本管理 ==================== -->
+    <section id="view-manage" class="hidden space-y-5">
+      <!-- 控制面板：動態天數篩選、自訂清單管理、匯出匯入 -->
+      <div class="bg-white rounded-2xl border border-stone-200 p-4 sm:p-5 shadow-sm space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-slate-800">我的單字本與自訂清單</h2>
+            <p class="text-xs text-slate-500 mt-0.5">系統透過最後查詢時間戳記動態篩選近期不熟單字，不產生冗餘日期資料夾。</p>
+          </div>
+          <!-- JSON 匯出 / 匯入按鈕 -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="exportJSON()" class="px-3 py-2 rounded-xl border border-stone-300 bg-stone-50 hover:bg-stone-100 text-slate-700 text-xs font-semibold transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              匯出 JSON 備份
+            </button>
+            <label class="cursor-pointer px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              匯入 JSON 還原
+              <input id="import-json-input" type="file" accept=".json,application/json" class="hidden" onchange="handleImportJSON(event)" />
+            </label>
+          </div>
+        </div>
+
+        <!-- 動態「最近 N 天」篩選器 -->
+        <div class="border-t border-stone-100 pt-3">
+          <div class="text-xs font-bold text-slate-500 mb-2">動態「不熟」時間篩選：</div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="setManageTimeFilter('all_unfamiliar')" data-mtf="all_unfamiliar" class="mtf-btn px-3 py-1.5 rounded-xl text-xs font-semibold border transition">全部不熟</button>
+            <button onclick="setManageTimeFilter('today')" data-mtf="today" class="mtf-btn px-3 py-1.5 rounded-xl text-xs font-semibold border transition">今日新增/查詢</button>
+            <button onclick="setManageTimeFilter('3days')" data-mtf="3days" class="mtf-btn px-3 py-1.5 rounded-xl text-xs font-semibold border transition">近 3 天不熟</button>
+            <button onclick="setManageTimeFilter('7days')" data-mtf="7days" class="mtf-btn px-3 py-1.5 rounded-xl text-xs font-semibold border transition">近 7 天不熟</button>
+            <button onclick="setManageTimeFilter('all_collected')" data-mtf="all_collected" class="mtf-btn px-3 py-1.5 rounded-xl text-xs font-semibold border transition">所有已收錄單字</button>
+          </div>
+        </div>
+
+        <!-- 自訂清單（Deck）管理列 -->
+        <div class="border-t border-stone-100 pt-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="text-xs font-bold text-slate-500">自訂清單（Deck）篩選與管理：</div>
+            <div class="flex items-center gap-1.5">
+              <input id="new-deck-input" type="text" placeholder="新清單名稱（如 N3動詞）" class="px-2.5 py-1.5 rounded-lg border border-stone-300 text-xs focus:border-indigo-500 outline-none w-44" />
+              <button onclick="createNewDeck()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold transition">＋ 建立</button>
+            </div>
+          </div>
+          <div id="manage-decks-bar" class="flex flex-wrap gap-2">
+            <!-- 由 JS 動態渲染 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 單字本統計與搜尋 -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div id="manage-summary-text" class="text-sm font-semibold text-slate-700"></div>
+        <div class="flex items-center gap-2">
+          <input id="manage-search-input" type="text" oninput="renderManageView()" placeholder="在目前清單中篩選..." class="px-3 py-1.5 rounded-xl border border-stone-300 bg-white text-xs sm:text-sm outline-none focus:border-indigo-500 w-full sm:w-56" />
+        </div>
+      </div>
+
+      <!-- 單字本卡片清單 -->
+      <div id="manage-words-list" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <!-- 由 JS 動態渲染 -->
+      </div>
+    </section>
+
+    <!-- ==================== 分頁 3：單字卡測驗 ==================== -->
+    <section id="view-quiz" class="hidden space-y-5">
+      <!-- 測驗設定面板 -->
+      <div id="quiz-setup-panel" class="bg-white rounded-2xl border border-stone-200 p-5 sm:p-6 shadow-sm space-y-5">
+        <div class="flex items-center justify-between border-b border-stone-100 pb-3">
+          <div>
+            <h2 class="text-lg font-bold text-slate-800">Quizlet 風格智慧單字卡測驗</h2>
+            <p class="text-xs text-slate-500 mt-0.5">支援手機左右滑動、滑鼠拖曳與鍵盤快捷鍵（空白鍵翻面、← 不熟、→ 記得）。</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- 左欄：範圍、詞性與隱藏開關 -->
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">1. 測驗範圍（清單 / 動態天數）</label>
+              <select id="quiz-scope-select" onchange="updateQuizPoolPreview()" class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 bg-stone-50 focus:bg-white focus:border-indigo-500 outline-none text-sm font-medium">
+                <!-- 由 JS 動態填充 -->
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">2. 詞性 / 自他動詞篩選</label>
+              <select id="quiz-pos-select" onchange="updateQuizPoolPreview()" class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 bg-stone-50 focus:bg-white focus:border-indigo-500 outline-none text-sm font-medium">
+                <option value="all">全部詞性</option>
+                <option value="自動詞">只練：自動詞</option>
+                <option value="他動詞">只練：他動詞</option>
+                <option value="動詞">只練：所有動詞</option>
+                <option value="名詞">只練：名詞</option>
+                <option value="い形容詞">只練：い形容詞</option>
+                <option value="な形容詞">只練：な形容詞</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1.5">3. 卡片正反面顯示方向</label>
+              <div class="grid grid-cols-2 gap-2">
+                <label class="cursor-pointer">
+                  <input type="radio" name="quiz-direction" value="jp-to-zh" checked class="peer sr-only" />
+                  <div class="p-2.5 rounded-xl border border-stone-200 text-center text-xs sm:text-sm font-semibold text-slate-600 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 transition">
+                    日文正面 ➔ 中文反面
+                  </div>
+                </label>
+                <label class="cursor-pointer">
+                  <input type="radio" name="quiz-direction" value="zh-to-jp" class="peer sr-only" />
+                  <div class="p-2.5 rounded-xl border border-stone-200 text-center text-xs sm:text-sm font-semibold text-slate-600 peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 transition">
+                    中文正面 ➔ 日文反面
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- 隱藏設定開關群組 -->
+            <div class="space-y-2.5">
+              <label class="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/70 border border-amber-200 cursor-pointer">
+                <input id="quiz-hide-furigana" type="checkbox" class="mt-0.5 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
+                <div>
+                  <div class="text-xs sm:text-sm font-bold text-amber-900">將振假名與音調線隱藏至反面</div>
+                  <div class="text-[11px] text-amber-700">勾選後，日文正面僅顯示漢字，考驗是否真正記得讀音與高低音調。</div>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-2.5 p-3 rounded-xl bg-indigo-50/60 border border-indigo-200 cursor-pointer">
+                <input id="quiz-hide-pos" type="checkbox" class="mt-0.5 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
+                <div>
+                  <div class="text-xs sm:text-sm font-bold text-indigo-900">將詞性與自/他動詞標籤隱藏至反面</div>
+                  <div class="text-[11px] text-indigo-700">勾選後，正反兩種測驗方向的卡片正面皆隱藏詞性與自他動詞膠囊，翻面後才顯示。</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- 右欄：雙測驗模式選擇 -->
+          <div class="space-y-3">
+            <label class="block text-xs font-bold text-slate-600">4. 選擇測驗演算法模式</label>
+
+            <label class="block cursor-pointer">
+              <input type="radio" name="quiz-mode" value="elimination" checked class="peer sr-only" />
+              <div class="p-4 rounded-2xl border-2 border-stone-200 peer-checked:border-indigo-600 peer-checked:bg-indigo-50/50 transition space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-sm text-slate-800">模式 A：消除循環模式</span>
+                  <span class="text-[11px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold">完整掃蕩</span>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                  右滑（記得）移出本輪；左滑（不熟）重新洗牌放回隊伍中循環，直到整堆單字全部答對為止。
+                </p>
+              </div>
+            </label>
+
+            <label class="block cursor-pointer">
+              <input type="radio" name="quiz-mode" value="weighted" class="peer sr-only" />
+              <div class="p-4 rounded-2xl border-2 border-stone-200 peer-checked:border-rose-600 peer-checked:bg-rose-50/40 transition space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-sm text-slate-800">模式 B：加權無盡模式</span>
+                  <span class="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-semibold">輪盤賭演算法</span>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                  依權重公式 <code class="px-1 py-0.5 bg-white rounded border text-[11px]">W = (b + c) / (a + b + c) + 0.05</code> 動態抽題，越常查錯與不熟的字出現機率越高，並即時顯示抽中權重百分比。
+                </p>
+              </div>
+            </label>
+
+            <!-- 符合條件張數預覽與開始按鈕 -->
+            <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-stone-50 p-3.5 rounded-xl border border-stone-200">
+              <div class="text-xs sm:text-sm text-slate-700">
+                符合條件題庫：<span id="quiz-pool-count" class="text-lg font-extrabold text-indigo-700 mx-1">0</span>張
+              </div>
+              <button
+                id="btn-start-quiz"
+                onclick="startQuiz()"
+                class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-bold text-sm shadow-sm transition active:scale-[0.98]"
+              >
+                開始測驗 →
+              </button>
+            </div>
+            <p id="quiz-empty-hint" class="hidden text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              目前所選範圍尚無單字，請先至「1. 字典查詞」搜尋並點選單字收錄至「不熟」清單！
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 測驗進行中介面 -->
+      <div id="quiz-active-panel" class="hidden space-y-4">
+        <!-- 頂部狀態與進度條 -->
+        <div class="bg-white rounded-2xl border border-stone-200 p-4 shadow-sm space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <button onclick="exitQuiz()" class="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-slate-700 text-xs font-semibold transition">
+              ← 結束並返回設定
+            </button>
+            <div id="quiz-mode-badge" class="text-xs font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700"></div>
+            <div id="quiz-counter-text" class="text-xs sm:text-sm font-bold text-slate-700"></div>
+          </div>
+          <!-- 模式 A 進度條 -->
+          <div id="quiz-progress-wrapper" class="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden">
+            <div id="quiz-progress-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- 單字卡核心互動舞台 -->
+        <div class="relative max-w-xl mx-auto pt-2 pb-4 px-1">
+          <!-- 拖曳與傾斜容器 -->
+          <div id="swipe-card-wrapper" class="swipe-wrapper relative w-full h-[380px] sm:h-[410px] cursor-grab active:cursor-grabbing">
+            <!-- 綠色「記得」印章提示 -->
+            <div id="stamp-right" class="pointer-events-none opacity-0 absolute top-6 left-6 z-20 border-4 border-emerald-500 text-emerald-600 bg-emerald-50/90 px-4 py-1.5 rounded-xl font-extrabold text-xl tracking-widest -rotate-12 shadow-sm">
+              記得 ✓
+            </div>
+            <!-- 紅色「不熟」印章提示 -->
+            <div id="stamp-left" class="pointer-events-none opacity-0 absolute top-6 right-6 z-20 border-4 border-rose-500 text-rose-600 bg-rose-50/90 px-4 py-1.5 rounded-xl font-extrabold text-xl tracking-widest rotate-12 shadow-sm">
+              不熟 ✕
+            </div>
+
+            <!-- 3D 翻面容器 -->
+            <div class="card-scene w-full h-full">
+              <div id="flashcard-inner" class="card-inner">
+                <!-- 正面 -->
+                <div id="flashcard-front" class="card-face bg-white border-2 border-stone-200 shadow-lg p-6 flex flex-col justify-between">
+                  <!-- 由 JS 動態渲染 -->
+                </div>
+                <!-- 反面 -->
+                <div id="flashcard-back" class="card-face card-face-back bg-gradient-to-br from-white to-stone-50 border-2 border-indigo-200 shadow-lg p-6 flex flex-col justify-between">
+                  <!-- 由 JS 動態渲染 -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部操作按鈕列（適配滑鼠與觸控） -->
+          <div class="mt-5 flex items-center justify-center gap-3 sm:gap-5">
+            <button
+              onclick="triggerSwipeAction(false)"
+              class="flex-1 max-w-[160px] py-3.5 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-95 border-2 border-rose-200 text-rose-700 font-bold text-sm sm:text-base shadow-sm transition flex items-center justify-center gap-2"
+            >
+              <span>← 不熟</span>
+            </button>
+
+            <button
+              onclick="flipCurrentCard()"
+              class="py-3.5 px-5 rounded-2xl bg-white hover:bg-stone-50 active:scale-95 border border-stone-300 text-slate-700 font-semibold text-xs sm:text-sm shadow-sm transition"
+              title="快捷鍵：空白鍵"
+            >
+              翻面 (Space)
+            </button>
+
+            <button
+              onclick="triggerSwipeAction(true)"
+              class="flex-1 max-w-[160px] py-3.5 px-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100 active:scale-95 border-2 border-emerald-200 text-emerald-700 font-bold text-sm sm:text-base shadow-sm transition flex items-center justify-center gap-2"
+            >
+              <span>記得 →</span>
+            </button>
+          </div>
+
+          <p class="text-center text-[11px] text-slate-400 mt-3">
+            提示：點擊卡片或按空白鍵翻面｜向左滑或按 ← 標記不熟｜向右滑或按 → 標記記得
+          </p>
+        </div>
+      </div>
+
+      <!-- 模式 A 完成慶祝畫面 -->
+      <div id="quiz-complete-panel" class="hidden max-w-lg mx-auto bg-white rounded-3xl border border-stone-200 p-8 text-center shadow-md space-y-4">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl">
+          🎉
+        </div>
+        <h3 class="text-2xl font-bold text-slate-800">本輪單字全數消除！</h3>
+        <p id="quiz-complete-stats" class="text-sm text-slate-600"></p>
+        <div class="pt-3 flex flex-wrap justify-center gap-3">
+          <button onclick="startQuiz()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition">
+            再測一次
+          </button>
+          <button onclick="exitQuiz()" class="px-5 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-slate-700 font-semibold text-sm transition">
+            返回測驗設定
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== 彈跳視窗：手動新增單字 ==================== -->
+  <div id="modal-add-word" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-stone-200 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-800">＋ 手動新增日文單字</h3>
+        <button onclick="closeModal('modal-add-word')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+      </div>
+      <form id="form-add-word" onsubmit="submitNewWord(event)" class="space-y-3.5 text-sm">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">漢字 / 表記 *</label>
+            <input id="add-kanji" required type="text" placeholder="例：約束" class="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">平假名讀音 *</label>
+            <input id="add-kana" required type="text" placeholder="例：やくそく" class="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">音調核數字 *</label>
+            <input id="add-pitch" required type="number" min="0" max="15" value="0" class="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">詞性 *</label>
+            <select id="add-pos" class="w-full px-2.5 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none bg-white">
+              <option value="名詞">名詞</option>
+              <option value="五段動詞">五段動詞</option>
+              <option value="一段動詞">一段動詞</option>
+              <option value="サ變動詞">サ變動詞</option>
+              <option value="カ變動詞">カ變動詞</option>
+              <option value="い形容詞">い形容詞</option>
+              <option value="な形容詞">な形容詞</option>
+              <option value="副詞">副詞</option>
+              <option value="慣用語・其他">慣用語・其他</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">自/他動詞</label>
+            <select id="add-transitivity" class="w-full px-2.5 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none bg-white">
+              <option value="">無</option>
+              <option value="自動詞">自動詞</option>
+              <option value="他動詞">他動詞</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">中文解釋 *</label>
+          <input id="add-meaning" required type="text" placeholder="例：約定、承諾" class="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">例句（選填）</label>
+          <input id="add-example" type="text" placeholder="例：友達と映画を見る約束をした。" class="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none" />
+        </div>
+
+        <label class="flex items-center gap-2 text-xs text-slate-600 pt-1">
+          <input id="add-to-unfamiliar" type="checkbox" checked class="rounded text-indigo-600" />
+          <span>新增後同時加入「不熟」清單以便測驗</span>
+        </label>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-stone-100">
+          <button type="button" onclick="closeModal('modal-add-word')" class="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-slate-700 font-semibold text-xs">取消</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm">儲存單字</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== 彈跳視窗：自由編輯單字與數據 ==================== -->
+  <div id="modal-edit-word" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-xl border border-stone-200 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-800">編輯單字與學習數據</h3>
+        <button onclick="closeModal('modal-edit-word')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+      </div>
+      <form id="form-edit-word" onsubmit="submitEditWord(event)" class="space-y-3.5 text-sm">
+        <input id="edit-word-id" type="hidden" />
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">漢字 / 表記</label>
+            <input id="edit-kanji" required type="text" class="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">平假名讀音</label>
+            <input id="edit-kana" required type="text" class="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">音調核數字</label>
+            <input id="edit-pitch" required type="number" min="0" max="15" class="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">詞性</label>
+            <select id="edit-pos" class="w-full px-2.5 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none bg-white">
+              <option value="名詞">名詞</option>
+              <option value="五段動詞">五段動詞</option>
+              <option value="一段動詞">一段動詞</option>
+              <option value="サ變動詞">サ變動詞</option>
+              <option value="カ變動詞">カ變動詞</option>
+              <option value="い形容詞">い形容詞</option>
+              <option value="な形容詞">な形容詞</option>
+              <option value="副詞">副詞</option>
+              <option value="慣用語・其他">慣用語・其他</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">自/他動詞</label>
+            <select id="edit-transitivity" class="w-full px-2.5 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none bg-white">
+              <option value="">無</option>
+              <option value="自動詞">自動詞</option>
+              <option value="他動詞">他動詞</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">解釋（可自行改為中文筆記）</label>
+          <textarea id="edit-meaning" required rows="2" class="w-full px-3 py-2 rounded-xl border border-stone-300 focus:border-indigo-500 outline-none"></textarea>
+        </div>
+
+        <!-- 直接手動修改 a / b / c 學習權重數據 -->
+        <div class="p-3.5 rounded-xl bg-stone-50 border border-stone-200 space-y-2">
+          <div class="text-xs font-bold text-slate-700">學習與加權數據（手動微調）</div>
+          <div class="grid grid-cols-3 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-semibold text-emerald-700 mb-1">答對次數 (a)</label>
+              <input id="edit-stat-a" required type="number" min="0" class="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 bg-white text-center font-bold" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-rose-700 mb-1">答錯次數 (b)</label>
+              <input id="edit-stat-b" required type="number" min="0" class="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 bg-white text-center font-bold" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-amber-700 mb-1">查詢/不熟 (c)</label>
+              <input id="edit-stat-c" required type="number" min="0" class="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 bg-white text-center font-bold" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 所屬清單勾選（可直接移出「不熟」） -->
+        <div>
+          <div class="text-xs font-bold text-slate-600 mb-1.5">所屬清單（取消勾選即可移出該清單）</div>
+          <div id="edit-decks-checkboxes" class="flex flex-wrap gap-2">
+            <!-- 由 JS 動態生成 -->
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-3 border-t border-stone-100">
+          <button type="button" onclick="confirmRemoveStudyWord()" class="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs transition">
+            從單字本移除
+          </button>
+          <div class="flex gap-2">
+            <button type="button" onclick="closeModal('modal-edit-word')" class="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-slate-700 font-semibold text-xs">取消</button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm">儲存變更</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== 通用確認對話框（取代 confirm） ==================== -->
+  <div id="modal-confirm" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-stone-200 space-y-4">
+      <h3 id="confirm-title" class="text-base font-bold text-slate-800">確認操作</h3>
+      <p id="confirm-message" class="text-sm text-slate-600 leading-relaxed"></p>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeConfirmModal(false)" class="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-slate-700 text-xs font-semibold">取消</button>
+        <button onclick="closeConfirmModal(true)" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 輕量提示 Toast -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    /*************************************************************************
+     * 1. 狀態管理與 localStorage 持久化（無內建死字庫，採線上 API + 本機快取）
+     *************************************************************************/
+    const STORAGE_KEY = 'jp_vocab_studio_data_v1';
+    const UNFAMILIAR_DECK_ID = 'unfamiliar';
+
+    let appState = {
+      customWords: [],   // 使用者透過「手動新增」建立的單字
+      cachedWords: {},   // 線上 API 查閱後快取於本機的單字（供離線永久使用）
+      studyItems: {},    // 已進入學習本的單字資料（含 decks, a, b, c, lastLookedUpAt 與編輯覆寫）
+      decks: [
+        { id: 'deck_n3_verbs', name: 'N3 常用動詞' },
+        { id: 'deck_confusing', name: '易錯讀音' }
+      ]
+    };
+
+    // UI 與線上搜尋即時狀態
+    let currentTab = 'dict';
+    let activeDetailWordId = null;
+    let manageTimeFilter = 'all_unfamiliar';
+    let manageDeckFilter = 'all';
+    let confirmCallback = null;
+
+    // 線上搜尋狀態（Debounce 350ms + 防競態序號）
+    let searchDebounceTimer = null;
+    let searchRequestSeq = 0;
+    let onlineSearchResults = []; // 目前搜尋關鍵字的線上回傳結果陣列
+    let onlineResultsMap = {};    // id -> word 物件快速索引（供點擊詳情持久化）
+    let isSearchingOnline = false;
+    let onlineSearchError = null;
+    let currentSearchQuery = '';
+
+    // 測驗狀態
+    let quizState = {
+      active: false,
+      mode: 'elimination', // 'elimination' | 'weighted'
+      direction: 'jp-to-zh',
+      hideFurigana: false,
+      hidePos: false,
+      pool: [],
+      queue: [],
+      totalInitial: 0,
+      completedCount: 0,
+      attemptsCount: 0,
+      currentWordId: null,
+      currentWeightPct: 0,
+      isFlipped: false,
+      isAnimating: false
+    };
+
+    /**
+     * 從 localStorage 載入資料
+     */
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            appState.customWords = Array.isArray(parsed.customWords) ? parsed.customWords : [];
+            appState.cachedWords = parsed.cachedWords && typeof parsed.cachedWords === 'object' ? parsed.cachedWords : {};
+            appState.studyItems = parsed.studyItems && typeof parsed.studyItems === 'object' ? parsed.studyItems : {};
+            appState.decks = Array.isArray(parsed.decks) ? parsed.decks : appState.decks;
+          }
+        }
+      } catch (err) {
+        console.error('載入 localStorage 失敗:', err);
+      }
+    }
+
+    /**
+     * 即時儲存至 localStorage 並更新導覽列計數
+     */
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (err) {
+        console.error('儲存 localStorage 失敗:', err);
+        showToast('儲存失敗：瀏覽器空間不足', 'error');
+      }
+      updateHeaderBadges();
+    }
+
+    /**
+     * 依 wordId 取得單字完整資訊（優先序：studyItems > customWords > cachedWords > onlineResultsMap）
+     */
+    function getWordById(wordId) {
+      if (appState.studyItems[wordId]) {
+        const s = appState.studyItems[wordId];
+        return {
+          id: s.wordId,
+          kanji: s.kanji,
+          kana: s.kana,
+          ruby: s.ruby || null,
+          pitch: Number(s.pitch) || 0,
+          pos: s.pos || '名詞',
+          transitivity: s.transitivity || null,
+          meaning: s.meaning || '',
+          senses: s.senses || null,
+          zhHint: s.zhHint || '',
+          example: s.example || '',
+          source: s.source || 'local'
+        };
+      }
+      const custom = appState.customWords.find(w => w.id === wordId);
+      if (custom) return custom;
+      if (appState.cachedWords[wordId]) return appState.cachedWords[wordId];
+      if (onlineResultsMap[wordId]) return onlineResultsMap[wordId];
+      return null;
+    }
+
+    /**
+     * 產生穩定的單字 ID（確保同一漢字+假名重複線上查詞時，能對應到同一筆不熟紀錄）
+     */
+    function makeStableApiWordId(kanji, kana) {
+      return `api_${(kanji || '').trim()}_${(kana || '').trim()}`;
+    }
+
+    /*************************************************************************
+     * 2. 線上真實日文字典 API 串接（Jotoba 直接 CORS + Jisho 代理雙重容錯）
+     *************************************************************************/
+
+    /**
+     * 統一解析詞性與自動詞/他動詞標籤
+     */
+    function parsePosAndTransitivity(rawPosList) {
+      const joined = (rawPosList || [])
+        .map(p => (typeof p === 'string' ? p : JSON.stringify(p)))
+        .join(' | ')
+        .toLowerCase();
+
+      let transitivity = null;
+      if (joined.includes('intransitive')) transitivity = '自動詞';
+      else if (joined.includes('transitive')) transitivity = '他動詞';
+
+      let pos = '名詞';
+      if (joined.includes('kuru') || joined.includes('カ變')) {
+        pos = 'カ變動詞';
+      } else if (joined.includes('suru') || joined.includes('サ變')) {
+        pos = 'サ變動詞';
+      } else if (joined.includes('ichidan') || joined.includes('一段')) {
+        pos = '一段動詞';
+      } else if (joined.includes('godan') || joined.includes('五段')) {
+        pos = '五段動詞';
+      } else if (joined.includes('verb')) {
+        pos = '五段動詞';
+      } else if (joined.includes('i-adjective') || joined.includes('"adjective":"i"') || joined.includes('keiyoushi')) {
+        pos = 'い形容詞';
+      } else if (joined.includes('na-adjective') || joined.includes('"adjective":"na"') || joined.includes('keiyodoshi')) {
+        pos = 'な形容詞';
+      } else if (joined.includes('adverb') || joined.includes('fukushi')) {
+        pos = '副詞';
+      } else if (joined.includes('noun')) {
+        pos = '名詞';
+      } else if (joined.includes('expression') || joined.includes('idiom')) {
+        pos = '慣用語・其他';
+      }
+
+      return { pos, transitivity };
+    }
+
+    /**
+     * 從 Jotoba 的 pitch 陣列計算音調核數字（若無則回傳 0）
+     */
+    function computePitchFromJotoba(pitchArray) {
+      if (!Array.isArray(pitchArray) || pitchArray.length === 0) return 0;
+      let moraCount = 0;
+      for (let i = 0; i < pitchArray.length; i++) {
+        const seg = pitchArray[i];
+        const segMorae = splitIntoMorae(seg.part || '').length;
+        moraCount += segMorae;
+        // 若當前段為高音且下一段為低音，則下降處即為音調核
+        if (seg.high && i + 1 < pitchArray.length && !pitchArray[i + 1].high) {
+          return moraCount;
+        }
+      }
+      return 0;
+    }
+
+    /**
+     * 來源 A：直接呼叫支援 CORS 的 Jotoba API（https://jotoba.de/api/search/words）
+     */
+    async function fetchFromJotoba(query) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
+      try {
+        const resp = await fetch('https://jotoba.de/api/search/words', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: query,
+            language: 'English',
+            no_english: false
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (!resp.ok) throw new Error(`Jotoba HTTP ${resp.status}`);
+        const data = await resp.json();
+        const words = Array.isArray(data.words) ? data.words : [];
+
+        return words.slice(0, 18).map(entry => {
+          const readingObj = entry.reading || {};
+          const kana = readingObj.kana || readingObj.kanji || '';
+          const kanji = readingObj.kanji || kana;
+          const sensesRaw = Array.isArray(entry.senses) ? entry.senses : [];
+
+          const allPos = [];
+          const sensesList = [];
+          sensesRaw.forEach(s => {
+            if (Array.isArray(s.pos)) allPos.push(...s.pos);
+            if (Array.isArray(s.glosses) && s.glosses.length > 0) {
+              sensesList.push(s.glosses.join('; '));
+            }
+          });
+
+          const { pos, transitivity } = parsePosAndTransitivity(allPos);
+          const pitch = computePitchFromJotoba(entry.pitch);
+          const meaning = sensesList.slice(0, 3).map((s, idx) => (sensesList.length > 1 ? `${idx + 1}. ${s}` : s)).join(' ／ ') || '（無釋義）';
+
+          return {
+            id: makeStableApiWordId(kanji, kana),
+            kanji,
+            kana,
+            ruby: null,
+            pitch,
+            pos,
+            transitivity,
+            meaning,
+            senses: sensesList.slice(0, 5),
+            example: '',
+            source: 'Jotoba'
+          };
+        }).filter(w => w.kana);
+      } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+      }
+    }
+
+    /**
+     * 來源 B：透過公開 CORS 代理呼叫 Jisho API（https://jisho.org/api/v1/search/words）
+     */
+    async function fetchFromJishoProxy(query) {
+      const targetUrl = `https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(query)}`;
+      const proxyUrls = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
+      ];
+
+      let lastErr = null;
+      for (const proxyUrl of proxyUrls) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        try {
+          const resp = await fetch(proxyUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (!resp.ok) throw new Error(`Jisho Proxy HTTP ${resp.status}`);
+          const data = await resp.json();
+          const list = Array.isArray(data.data) ? data.data : [];
+
+          return list.slice(0, 18).map(entry => {
+            const jp = (entry.japanese && entry.japanese[0]) || {};
+            const kana = jp.reading || jp.word || '';
+            const kanji = jp.word || kana;
+            const sensesRaw = Array.isArray(entry.senses) ? entry.senses : [];
+
+            const allPos = [];
+            const sensesList = [];
+            sensesRaw.forEach(s => {
+              if (Array.isArray(s.parts_of_speech)) allPos.push(...s.parts_of_speech);
+              if (Array.isArray(s.english_definitions) && s.english_definitions.length > 0) {
+                sensesList.push(s.english_definitions.join('; '));
+              }
+            });
+
+            const { pos, transitivity } = parsePosAndTransitivity(allPos);
+            const meaning = sensesList.slice(0, 3).map((s, idx) => (sensesList.length > 1 ? `${idx + 1}. ${s}` : s)).join(' ／ ') || '（無釋義）';
+
+            return {
+              id: makeStableApiWordId(kanji, kana),
+              kanji,
+              kana,
+              ruby: null,
+              pitch: 0, // Jisho 無音調核，預設 0（平板型），可於詳情頁即時微調
+              pos,
+              transitivity,
+              meaning,
+              senses: sensesList.slice(0, 5),
+              example: '',
+              source: 'Jisho'
+            };
+          }).filter(w => w.kana);
+        } catch (err) {
+          clearTimeout(timeoutId);
+          lastErr = err;
+        }
+      }
+      throw lastErr || new Error('Jisho API 代理皆無回應');
+    }
+
+    /**
+     * 執行線上即時搜尋（合併本機手動新增單字 + Jotoba/Jisho 線上結果）
+     */
+    async function executeOnlineSearch(query) {
+      const seq = ++searchRequestSeq;
+      isSearchingOnline = true;
+      onlineSearchError = null;
+      updateSearchSpinner(true);
+      document.getElementById('dict-api-status').textContent = '正在連線線上字典查詢...';
+      renderDictList();
+
+      // 先比對本機手動新增的自訂單字
+      const qLower = query.toLowerCase();
+      const localMatches = appState.customWords.filter(w =>
+        w.kanji.toLowerCase().includes(qLower) ||
+        w.kana.toLowerCase().includes(qLower) ||
+        w.meaning.toLowerCase().includes(qLower)
+      );
+
+      let apiWords = [];
+      let usedSource = '';
+
+      try {
+        try {
+          apiWords = await fetchFromJotoba(query);
+          usedSource = 'Jotoba API';
+        } catch (errJotoba) {
+          console.warn('Jotoba 查詢失敗，自動切換至 Jisho API 代理:', errJotoba);
+          apiWords = await fetchFromJishoProxy(query);
+          usedSource = 'Jisho API';
+        }
+
+        // 若使用者已輸入新關鍵字，丟棄過期回應
+        if (seq !== searchRequestSeq) return;
+
+        // 合併本機自訂與線上結果（以 id 去重）
+        const seen = new Set();
+        const merged = [];
+
+        localMatches.forEach(w => {
+          const effective = getWordById(w.id) || w;
+          seen.add(effective.id);
+          merged.push(effective);
+        });
+
+        apiWords.forEach(w => {
+          if (!seen.has(w.id)) {
+            seen.add(w.id);
+            // 若該字已存在於 studyItems，優先使用使用者已編輯/微調音調的版本
+            const existing = appState.studyItems[w.id];
+            if (existing) {
+              merged.push({
+                ...w,
+                kanji: existing.kanji,
+                kana: existing.kana,
+                pitch: existing.pitch,
+                pos: existing.pos,
+                transitivity: existing.transitivity,
+                meaning: existing.meaning,
+                zhHint: existing.zhHint || ''
+              });
+            } else {
+              merged.push(w);
+            }
+          }
+        });
+
+        onlineSearchResults = merged;
+        merged.forEach(w => { onlineResultsMap[w.id] = w; });
+        document.getElementById('dict-api-status').textContent = `來源：${usedSource}（找到 ${merged.length} 筆）`;
+      } catch (err) {
+        if (seq !== searchRequestSeq) return;
+        console.error('線上字典查詢失敗:', err);
+        onlineSearchResults = localMatches;
+        localMatches.forEach(w => { onlineResultsMap[w.id] = w; });
+        onlineSearchError = '無法連線至線上日文字典 API（可能是網路異常或 CORS 代理暫時無回應）。';
+        document.getElementById('dict-api-status').textContent = '連線暫時失敗';
+      } finally {
+        if (seq === searchRequestSeq) {
+          isSearchingOnline = false;
+          updateSearchSpinner(false);
+          renderDictList();
+        }
+      }
+    }
+
+    /**
+     * 輔助中文參考翻譯（免費 MyMemory API，免 Key，點按後將參考中文補充於詳情卡）
+     */
+    async function fetchChineseReference(wordId) {
+      const btn = document.getElementById('btn-zh-ref');
+      const box = document.getElementById('zh-ref-box');
+      const w = getWordById(wordId);
+      if (!w || !btn || !box) return;
+
+      btn.disabled = true;
+      btn.textContent = '🌐 翻譯查詢中...';
+
+      try {
+        // 取第一段主要英文釋義進行英翻繁中
+        const sourceText = (Array.isArray(w.senses) && w.senses[0]) ? w.senses[0] : w.meaning;
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(sourceText.slice(0, 180))}&langpair=en|zh-TW`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('Translation HTTP error');
+        const data = await resp.json();
+        const translated = data && data.responseData && data.responseData.translatedText;
+
+        if (translated) {
+          if (appState.studyItems[wordId]) {
+            appState.studyItems[wordId].zhHint = translated;
+            saveState();
+          }
+          box.classList.remove('hidden');
+          box.innerHTML = `
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div><span class="font-bold text-indigo-700 mr-1.5">🌐 中文參考：</span><span class="text-slate-800 font-medium">${escapeHtml(translated)}</span></div>
+              <button onclick="applyZhHintAsMeaning('${escapeAttr(wordId)}')" class="text-[11px] px-2 py-0.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-semibold transition">套用為主要解釋</button>
+            </div>
+          `;
+          btn.textContent = '🌐 已取得中文參考';
+        } else {
+          throw new Error('無翻譯結果');
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '🌐 輔以中文參考';
+        showToast('無法取得自動中文翻譯，您可直接點「編輯數據」自訂中文解釋', 'warning');
+      }
+    }
+
+    function applyZhHintAsMeaning(wordId) {
+      const item = appState.studyItems[wordId];
+      if (!item || !item.zhHint) return;
+      item.meaning = `${item.zhHint}（${item.meaning}）`;
+      saveState();
+      renderDictDetail(wordId);
+      renderDictList();
+      showToast('已將中文參考合併至主要解釋', 'success');
+    }
+
+    /*************************************************************************
+     * 3. 日文視覺化核心工具：振假名 (<ruby>)、音調階梯曲線 (CSS)、TTS 語音
+     *************************************************************************/
+
+    function buildRubyHtml(kanji, kana, explicitRuby = null) {
+      const safeKanji = escapeHtml(kanji || '');
+      const safeKana = escapeHtml(kana || '');
+      if (!kanji) return safeKana;
+      if (kanji === kana) return safeKanji;
+
+      if (Array.isArray(explicitRuby) && explicitRuby.length > 0) {
+        const joined = explicitRuby.map(seg => seg.t).join('');
+        if (joined === kanji) {
+          return explicitRuby.map(seg => (seg.r ? `<ruby>${escapeHtml(seg.t)}<rt>${escapeHtml(seg.r)}</rt></ruby>` : escapeHtml(seg.t))).join('');
+        }
+      }
+
+      // 智慧剝離前後相同的送り仮名
+      let kEnd = kanji.length;
+      let rEnd = kana.length;
+      while (kEnd > 1 && rEnd > 1 && kanji[kEnd - 1] === kana[rEnd - 1]) {
+        kEnd--;
+        rEnd--;
+      }
+      let kStart = 0;
+      let rStart = 0;
+      while (kStart < kEnd - 1 && rStart < rEnd - 1 && kanji[kStart] === kana[rStart]) {
+        kStart++;
+        rStart++;
+      }
+
+      const prefix = escapeHtml(kanji.slice(0, kStart));
+      const coreKanji = escapeHtml(kanji.slice(kStart, kEnd));
+      const coreKana = escapeHtml(kana.slice(rStart, rEnd));
+      const suffix = escapeHtml(kanji.slice(kEnd));
+
+      return `${prefix}<ruby>${coreKanji}<rt>${coreKana}</rt></ruby>${suffix}`;
+    }
+
+    function splitIntoMorae(kana) {
+      const smallKana = new Set(['ゃ','ゅ','ょ','ぁ','ぃ','ぅ','ぇ','ぉ','ャ','ュ','ョ','ァ','ィ','ゥ','ェ','ォ']);
+      const chars = Array.from(kana || '');
+      const morae = [];
+      for (const ch of chars) {
+        if (smallKana.has(ch) && morae.length > 0) {
+          morae[morae.length - 1] += ch;
+        } else {
+          morae.push(ch);
+        }
+      }
+      return morae;
+    }
+
+    function buildPitchAccentHtml(kana, pitchNum) {
+      const p = Number(pitchNum) || 0;
+      const morae = splitIntoMorae(kana);
+      const total = morae.length;
+
+      let typeLabel = '';
+      if (p === 0) typeLabel = '平板';
+      else if (p === 1) typeLabel = '頭高';
+      else if (p >= total) typeLabel = '尾高';
+      else typeLabel = '中高';
+
+      const spans = morae.map((m, idx) => {
+        const pos = idx + 1;
+        let isHigh = false;
+        let isDrop = false;
+        let isRise = false;
+
+        if (p === 0) {
+          isHigh = pos >= 2;
+          isRise = pos === 2;
+        } else if (p === 1) {
+          isHigh = pos === 1;
+          isDrop = pos === 1;
+        } else {
+          isHigh = pos >= 2 && pos <= p;
+          isRise = pos === 2 && p >= 2;
+          isDrop = pos === p;
+        }
+
+        const classes = ['pitch-mora'];
+        if (isHigh) classes.push('pitch-high');
+        if (isRise) classes.push('pitch-rise');
+        if (isDrop) classes.push('pitch-drop');
+
+        return `<span class="${classes.join(' ')}">${escapeHtml(m)}</span>`;
+      }).join('');
+
+      const tailDot = (p > 0 && p >= total) ? `<span class="pitch-particle-dot" title="接續助詞時下降"></span>` : '';
+
+      return `
+        <span class="inline-flex items-center gap-1.5">
+          <span class="pitch-container text-slate-700 font-medium">${spans}${tailDot}</span>
+          <span class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-rose-50 text-rose-700 border border-rose-200" title="音調核：${p}型（${typeLabel}型）">
+            [${p}] ${typeLabel}
+          </span>
+        </span>
+      `;
+    }
+
+    function buildPosBadgesHtml(pos, transitivity) {
+      let posColor = 'bg-slate-100 text-slate-700 border-slate-200';
+      if (pos && pos.includes('動詞')) posColor = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      else if (pos === '名詞') posColor = 'bg-sky-50 text-sky-700 border-sky-200';
+      else if (pos === 'い形容詞') posColor = 'bg-amber-50 text-amber-800 border-amber-200';
+      else if (pos === 'な形容詞') posColor = 'bg-purple-50 text-purple-700 border-purple-200';
+
+      let html = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${posColor}">${escapeHtml(pos || '名詞')}</span>`;
+
+      if (transitivity === '自動詞') {
+        html += `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">自動詞</span>`;
+      } else if (transitivity === '他動詞') {
+        html += `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border bg-orange-50 text-orange-700 border-orange-200">他動詞</span>`;
+      }
+      return html;
+    }
+
+    function speakJapanese(text, event) {
+      if (event) event.stopPropagation();
+      if (!('speechSynthesis' in window)) {
+        showToast('您的瀏覽器不支援語音朗讀功能', 'error');
+        return;
+      }
+      try {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'ja-JP';
+        utter.rate = 0.92;
+        const voices = window.speechSynthesis.getVoices();
+        const jpVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('ja'));
+        if (jpVoice) utter.voice = jpVoice;
+        window.speechSynthesis.speak(utter);
+      } catch (err) {
+        console.error('語音播放失敗:', err);
+      }
+    }
+
+    /*************************************************************************
+     * 4. 「不熟」核心機制、查詢即持久化與時間戳記工具
+     *************************************************************************/
+
+    /**
+     * 記錄查閱或加入學習：將線上結果完整持久化至 localStorage，自動加入「不熟」並累計 c + 1
+     */
+    function recordWordLookup(wordId, silent = false) {
+      const word = getWordById(wordId);
+      if (!word) return null;
+
+      // 永久快取於本機字典快取，避免未來重複呼叫 API
+      appState.cachedWords[word.id] = {
+        id: word.id,
+        kanji: word.kanji,
+        kana: word.kana,
+        ruby: word.ruby || null,
+        pitch: Number(word.pitch) || 0,
+        pos: word.pos || '名詞',
+        transitivity: word.transitivity || null,
+        meaning: word.meaning || '',
+        senses: word.senses || null,
+        example: word.example || '',
+        source: word.source || 'API'
+      };
+
+      const now = Date.now();
+      let item = appState.studyItems[wordId];
+
+      if (!item) {
+        item = {
+          wordId: word.id,
+          kanji: word.kanji,
+          kana: word.kana,
+          ruby: word.ruby || null,
+          pitch: Number(word.pitch) || 0,
+          pos: word.pos || '名詞',
+          transitivity: word.transitivity || null,
+          meaning: word.meaning || '',
+          senses: word.senses || null,
+          zhHint: word.zhHint || '',
+          example: word.example || '',
+          source: word.source || 'API',
+          decks: [UNFAMILIAR_DECK_ID],
+          a: 0,
+          b: 0,
+          c: 1,
+          lastLookedUpAt: now,
+          createdAt: now
+        };
+        appState.studyItems[wordId] = item;
+        if (!silent) showToast(`已將「${word.kanji}」加入「不熟」清單（查詢第 1 次）`, 'info');
+      } else {
+        if (!item.decks.includes(UNFAMILIAR_DECK_ID)) {
+          item.decks.push(UNFAMILIAR_DECK_ID);
+        }
+        item.c = (Number(item.c) || 0) + 1;
+        item.lastLookedUpAt = now;
+        if (!silent) showToast(`「${item.kanji}」累計查詢 ${item.c} 次（已更新至不熟）`, 'warning');
+      }
+
+      saveState();
+      return item;
+    }
+
+    /**
+     * 快速微調單字音調核（詳情卡片 [ - ] 0 [ + ] 按鈕專用）
+     */
+    function adjustWordPitch(wordId, delta) {
+      let item = appState.studyItems[wordId];
+      if (!item) {
+        item = recordWordLookup(wordId, true);
+      }
+      if (!item) return;
+
+      const moraeLen = Math.max(1, splitIntoMorae(item.kana).length);
+      const maxPitch = Math.max(10, moraeLen);
+      const nextPitch = Math.min(maxPitch, Math.max(0, (Number(item.pitch) || 0) + delta));
+
+      if (nextPitch === Number(item.pitch)) return;
+
+      item.pitch = nextPitch;
+      if (appState.cachedWords[wordId]) appState.cachedWords[wordId].pitch = nextPitch;
+      const customTarget = appState.customWords.find(w => w.id === wordId);
+      if (customTarget) customTarget.pitch = nextPitch;
+      if (onlineResultsMap[wordId]) onlineResultsMap[wordId].pitch = nextPitch;
+
+      // 同步更新目前顯示中的搜尋結果陣列
+      const resTarget = onlineSearchResults.find(w => w.id === wordId);
+      if (resTarget) resTarget.pitch = nextPitch;
+
+      saveState();
+      renderDictDetail(wordId);
+      renderDictList();
+      if (currentTab === 'manage') renderManageView();
+    }
+
+    function toggleWordInDeck(wordId, deckId) {
+      let item = appState.studyItems[wordId];
+      if (!item) {
+        item = recordWordLookup(wordId, true);
+      }
+      const idx = item.decks.indexOf(deckId);
+      if (idx >= 0) {
+        item.decks.splice(idx, 1);
+      } else {
+        item.decks.push(deckId);
+      }
+      saveState();
+      if (activeDetailWordId === wordId) renderDictDetail(wordId);
+      if (currentTab === 'manage') renderManageView();
+      renderDictList();
+    }
+
+    function matchesTimeFilter(item, filterType) {
+      if (!item) return false;
+      const isUnfamiliar = item.decks.includes(UNFAMILIAR_DECK_ID);
+      if (filterType === 'all_collected') return true;
+      if (filterType === 'all_unfamiliar') return isUnfamiliar;
+
+      if (!isUnfamiliar) return false;
+      const ts = item.lastLookedUpAt || item.createdAt || 0;
+      const now = new Date();
+
+      if (filterType === 'today') {
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        return ts >= startOfToday;
+      }
+      if (filterType === '3days') {
+        return ts >= Date.now() - 3 * 24 * 60 * 60 * 1000;
+      }
+      if (filterType === '7days') {
+        return ts >= Date.now() - 7 * 24 * 60 * 60 * 1000;
+      }
+      return true;
+    }
+
+    function formatRelativeTime(ts) {
+      if (!ts) return '未知';
+      const diffMs = Date.now() - ts;
+      const mins = Math.floor(diffMs / 60000);
+      if (mins < 1) return '剛剛';
+      if (mins < 60) return `${mins} 分鐘前`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs} 小時前`;
+      const days = Math.floor(hrs / 24);
+      if (days < 30) return `${days} 天前`;
+      const d = new Date(ts);
+      return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+    }
+
+    /*************************************************************************
+     * 5. 分頁切換與導覽列更新
+     *************************************************************************/
+    function switchTab(tabName) {
+      currentTab = tabName;
+      ['dict', 'manage', 'quiz'].forEach(t => {
+        const sec = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (t === tabName) {
+          sec.classList.remove('hidden');
+          btn.classList.add('bg-white', 'text-indigo-700', 'shadow-sm');
+          btn.classList.remove('text-slate-600', 'hover:text-slate-800');
+        } else {
+          sec.classList.add('hidden');
+          btn.classList.remove('bg-white', 'text-indigo-700', 'shadow-sm');
+          btn.classList.add('text-slate-600', 'hover:text-slate-800');
+        }
+      });
+
+      if (tabName === 'dict') {
+        renderDictList();
+        if (activeDetailWordId) renderDictDetail(activeDetailWordId);
+      } else if (tabName === 'manage') {
+        renderManageView();
+      } else if (tabName === 'quiz') {
+        if (!quizState.active) {
+          populateQuizScopeSelect();
+          updateQuizPoolPreview();
+        }
+      }
+    }
+
+    function updateHeaderBadges() {
+      const unfamiliarCount = Object.values(appState.studyItems)
+        .filter(item => item.decks.includes(UNFAMILIAR_DECK_ID)).length;
+      document.getElementById('nav-unfamiliar-badge').textContent = unfamiliarCount;
+      document.getElementById('mobile-unfamiliar-count').textContent = unfamiliarCount;
+    }
+
+    /*************************************************************************
+     * 6. 分頁 1：即時搜尋輸入處理、動詞活用提示、最近查詢紀錄與詳情卡片
+     *************************************************************************/
+
+    /**
+     * 偵測是否為常見日文動詞/形容詞活用形結尾
+     */
+    function checkVerbConjugationHint(query) {
+      const hintEl = document.getElementById('verb-conjugation-hint');
+      if (!query || query.length < 2) {
+        hintEl.classList.add('hidden');
+        return;
+      }
+      const suffixes = ['ました', 'ません', 'ている', 'ていた', 'かった', 'くない', 'ます', 'ない', 'たい', 'よう', 'た', 'て', 'だ', 'で'];
+      const hasConjugationEnding = suffixes.some(s => query.endsWith(s));
+      hintEl.classList.toggle('hidden', !hasConjugationEnding);
+    }
+
+    function updateSearchSpinner(visible) {
+      document.getElementById('dict-search-spinner').classList.toggle('hidden', !visible);
+    }
+
+    /**
+     * 點擊範例關鍵字快速體驗線上查詞
+     */
+    function quickSearchExample(keyword) {
+      const input = document.getElementById('dict-search-input');
+      input.value = keyword;
+      handleSearchInput(keyword);
+      input.focus();
+    }
+
+    function clearDictSearch() {
+      const input = document.getElementById('dict-search-input');
+      input.value = '';
+      currentSearchQuery = '';
+      onlineSearchResults = [];
+      onlineSearchError = null;
+      isSearchingOnline = false;
+      searchRequestSeq++;
+      clearTimeout(searchDebounceTimer);
+      updateSearchSpinner(false);
+      document.getElementById('dict-search-clear').classList.add('hidden');
+      document.getElementById('verb-conjugation-hint').classList.add('hidden');
+      document.getElementById('dict-api-status').textContent = '';
+      renderDictList();
+      input.focus();
+    }
+
+    function handleSearchInput(rawVal) {
+      const query = (rawVal || '').trim();
+      currentSearchQuery = query;
+      document.getElementById('dict-search-clear').classList.toggle('hidden', !query);
+      checkVerbConjugationHint(query);
+
+      clearTimeout(searchDebounceTimer);
+
+      if (!query) {
+        searchRequestSeq++;
+        onlineSearchResults = [];
+        onlineSearchError = null;
+        isSearchingOnline = false;
+        updateSearchSpinner(false);
+        document.getElementById('dict-api-status').textContent = '';
+        renderDictList();
+        return;
+      }
+
+      // 350ms 防抖後觸發線上日文字典 API 查詢
+      searchDebounceTimer = setTimeout(() => {
+        executeOnlineSearch(query);
+      }, 350);
+    }
+
+    /**
+     * 取得最近查詢紀錄（依 lastLookedUpAt 由新到舊取前 15 筆）
+     */
+    function getRecentLookupWords(limit = 15) {
+      return Object.values(appState.studyItems)
+        .sort((a, b) => (b.lastLookedUpAt || b.createdAt || 0) - (a.lastLookedUpAt || a.createdAt || 0))
+        .slice(0, limit)
+        .map(s => getWordById(s.wordId))
+        .filter(Boolean);
+    }
+
+    function renderDictList() {
+      const heading = document.getElementById('dict-list-heading');
+      const countEl = document.getElementById('dict-match-count');
+      const grid = document.getElementById('dict-results-grid');
+
+      // 情況 1：搜尋框為空 ➔ 顯示「最近查詢紀錄（Recent Lookups）」
+      if (!currentSearchQuery) {
+        const recents = getRecentLookupWords(15);
+        heading.textContent = '最近查詢紀錄（Recent Lookups）';
+        countEl.textContent = recents.length > 0 ? `顯示最近 ${recents.length} 筆` : '';
+
+        if (recents.length === 0) {
+          grid.innerHTML = `
+            <div class="col-span-full bg-white rounded-2xl border border-dashed border-stone-300 p-8 sm:p-10 text-center space-y-4">
+              <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl">
+                🔎
+              </div>
+              <div class="space-y-1">
+                <p class="text-sm sm:text-base font-bold text-slate-700">請在上方搜尋框輸入漢字或假名開始查詞</p>
+                <p class="text-xs text-slate-500">查閱後的單字會自動記錄於此，並加入「不熟」清單供單字卡測驗複習。</p>
+              </div>
+              <div class="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs">
+                <span class="text-slate-400">試試查詢：</span>
+                <button onclick="quickSearchExample('落ちる')" class="px-3 py-1.5 rounded-full bg-stone-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-700 font-jp font-medium transition">落ちる</button>
+                <button onclick="quickSearchExample('開ける')" class="px-3 py-1.5 rounded-full bg-stone-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-700 font-jp font-medium transition">開ける</button>
+                <button onclick="quickSearchExample('図書館')" class="px-3 py-1.5 rounded-full bg-stone-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-700 font-jp font-medium transition">図書館</button>
+                <button onclick="quickSearchExample('雰囲気')" class="px-3 py-1.5 rounded-full bg-stone-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-700 font-jp font-medium transition">雰囲気</button>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        grid.innerHTML = recents.map(w => renderWordCardHtml(w)).join('');
+        return;
+      }
+
+      // 情況 2：正在向線上 API 查詢中
+      heading.textContent = `線上字典搜尋「${currentSearchQuery}」`;
+      if (isSearchingOnline) {
+        countEl.textContent = '查詢中...';
+        grid.innerHTML = `
+          <div class="col-span-full bg-white rounded-2xl border border-stone-200 p-10 text-center space-y-3">
+            <div class="w-7 h-7 mx-auto border-3 border-indigo-200 border-t-indigo-600 rounded-full spinner"></div>
+            <div class="text-sm font-medium text-slate-600">正在從線上日文字典查詢「${escapeHtml(currentSearchQuery)}」...</div>
+          </div>
+        `;
+        return;
+      }
+
+      // 情況 3：線上查詢發生錯誤（退回機制）
+      if (onlineSearchError && onlineSearchResults.length === 0) {
+        countEl.textContent = '連線異常';
+        grid.innerHTML = `
+          <div class="col-span-full bg-rose-50/70 rounded-2xl border border-rose-200 p-8 text-center space-y-3">
+            <div class="text-2xl">📡</div>
+            <div class="text-sm font-bold text-rose-800">${escapeHtml(onlineSearchError)}</div>
+            <p class="text-xs text-rose-700">您可稍後重試，或直接將此單字手動建檔至本機單字庫。</p>
+            <div class="flex flex-wrap justify-center gap-2 pt-1">
+              <button onclick="executeOnlineSearch('${escapeAttr(currentSearchQuery)}')" class="px-4 py-2 rounded-xl bg-white border border-rose-300 hover:bg-rose-100 text-rose-700 text-xs font-semibold transition">
+                重新連線查詢
+              </button>
+              <button onclick="openAddWordModal('${escapeAttr(currentSearchQuery)}')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition">
+                ＋ 手動新增「${escapeHtml(currentSearchQuery)}」
+              </button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // 情況 4：線上查無結果
+      countEl.textContent = `共 ${onlineSearchResults.length} 筆結果`;
+      if (onlineSearchResults.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center space-y-3">
+            <div class="text-slate-600 text-sm">線上字典查無「<span class="font-bold text-slate-800">${escapeHtml(currentSearchQuery)}</span>」的相關單字</div>
+            <p class="text-xs text-slate-400">若為動詞變化形，建議改輸入原形（辭書形）；或直接手動新增此單字。</p>
+            <button onclick="openAddWordModal('${escapeAttr(currentSearchQuery)}')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition">
+              ＋ 手動新增「${escapeHtml(currentSearchQuery)}」
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      // 情況 5：渲染線上搜尋結果卡片
+      grid.innerHTML = onlineSearchResults.map(w => renderWordCardHtml(w)).join('');
+    }
+
+    function renderWordCardHtml(w) {
+      const study = appState.studyItems[w.id];
+      const isUnfamiliar = study && study.decks.includes(UNFAMILIAR_DECK_ID);
+      const lookupCount = study ? study.c : 0;
+      const isActive = activeDetailWordId === w.id;
+
+      return `
+        <div
+          onclick="inspectWordDetail('${escapeAttr(w.id)}')"
+          class="group cursor-pointer bg-white rounded-2xl border ${isActive ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-stone-200 hover:border-indigo-300'} p-4 shadow-xs hover:shadow-md transition flex flex-col justify-between gap-3"
+        >
+          <div>
+            ${isUnfamiliar ? `
+              <div class="mb-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-bold">
+                <span>⚠️ 已在「不熟」清單｜累計查詢 ${lookupCount} 次</span>
+              </div>
+            ` : ''}
+
+            <div class="flex items-start justify-between gap-2">
+              <div class="font-jp text-2xl font-bold text-slate-800 leading-snug">
+                ${buildRubyHtml(w.kanji, w.kana, w.ruby)}
+              </div>
+              <button
+                onclick="speakJapanese('${escapeAttr(w.kana)}', event)"
+                class="shrink-0 w-8 h-8 rounded-full bg-stone-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 flex items-center justify-center transition"
+                title="朗讀日文發音"
+              >
+                🔊
+              </button>
+            </div>
+
+            <div class="mt-1.5 text-xs">
+              ${buildPitchAccentHtml(w.kana, w.pitch)}
+            </div>
+
+            <div class="mt-2.5 flex flex-wrap gap-1.5">
+              ${buildPosBadgesHtml(w.pos, w.transitivity)}
+              ${w.source === 'custom' ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-600 border border-stone-200">自訂</span>' : ''}
+            </div>
+
+            <p class="mt-2.5 text-sm text-slate-700 font-medium line-clamp-2">${escapeHtml(w.meaning)}</p>
+          </div>
+
+          <div class="pt-2.5 border-t border-stone-100 flex items-center justify-between text-xs">
+            <span class="text-indigo-600 font-semibold group-hover:underline">查閱詳情 / 加入學習 →</span>
+            ${study ? `<span class="text-[11px] text-slate-400">上次：${formatRelativeTime(study.lastLookedUpAt)}</span>` : '<span class="text-[11px] text-slate-400">點擊即收錄</span>'}
+          </div>
+        </div>
+      `;
+    }
+
+    function inspectWordDetail(wordId) {
+      recordWordLookup(wordId);
+      activeDetailWordId = wordId;
+      renderDictDetail(wordId);
+      renderDictList();
+      document.getElementById('dict-detail-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    /**
+     * 渲染單字詳情卡片（含快速微調音調核 [ - ] 0 [ + ] 與中文參考按鈕）
+     */
+    function renderDictDetail(wordId) {
+      const panel = document.getElementById('dict-detail-panel');
+      const w = getWordById(wordId);
+      if (!w) {
+        panel.classList.add('hidden');
+        return;
+      }
+      const study = appState.studyItems[wordId];
+      const isUnfamiliar = study && study.decks.includes(UNFAMILIAR_DECK_ID);
+      const lookupCount = study ? study.c : 0;
+      const pitchVal = Number(w.pitch) || 0;
+      const moraeLen = Math.max(1, splitIntoMorae(w.kana).length);
+      const maxPitch = Math.max(10, moraeLen);
+
+      const customDeckButtons = appState.decks.map(d => {
+        const checked = study && study.decks.includes(d.id);
+        return `
+          <button
+            onclick="toggleWordInDeck('${escapeAttr(w.id)}', '${escapeAttr(d.id)}')"
+            class="px-3 py-1.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 ${
+              checked
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                : 'bg-stone-50 text-slate-600 border-stone-200 hover:bg-stone-100'
+            }"
+          >
+            <span>${checked ? '✓' : '＋'}</span>
+            <span>${escapeHtml(d.name)}</span>
+          </button>
+        `;
+      }).join('');
+
+      const sensesHtml = Array.isArray(w.senses) && w.senses.length > 1
+        ? `<ol class="list-decimal list-inside space-y-1 text-sm text-slate-700 mt-1">
+            ${w.senses.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+           </ol>`
+        : `<div class="text-base sm:text-lg font-bold text-slate-800">${escapeHtml(w.meaning)}</div>`;
+
+      panel.classList.remove('hidden');
+      panel.innerHTML = `
+        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div class="space-y-3 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">單字詳情</span>
+              ${isUnfamiliar ? `
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold">
+                  ⚠️ 已在「不熟」清單｜累計查詢 ${lookupCount} 次
+                </span>
+              ` : ''}
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4">
+              <div class="font-jp text-4xl font-bold text-slate-900">
+                ${buildRubyHtml(w.kanji, w.kana, w.ruby)}
+              </div>
+              <button
+                onclick="speakJapanese('${escapeAttr(w.kana)}', event)"
+                class="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs flex items-center gap-1.5 transition"
+              >
+                <span>🔊</span>
+                <span>朗讀發音</span>
+              </button>
+            </div>
+
+            <!-- 音調階梯曲線 + 快速微調音調核按鈕組 -->
+            <div class="flex flex-wrap items-center gap-3 pt-0.5">
+              <div class="text-base">
+                ${buildPitchAccentHtml(w.kana, pitchVal)}
+              </div>
+              <div class="inline-flex items-center gap-1 bg-stone-100 border border-stone-200 rounded-xl px-2 py-1 text-xs">
+                <span class="text-slate-500 font-semibold mr-1">音調：</span>
+                <button
+                  onclick="adjustWordPitch('${escapeAttr(w.id)}', -1)"
+                  ${pitchVal <= 0 ? 'disabled' : ''}
+                  class="w-6 h-6 rounded-lg bg-white hover:bg-rose-50 hover:text-rose-700 disabled:opacity-40 border border-stone-200 font-bold flex items-center justify-center transition"
+                  title="降低音調核數字"
+                >－</button>
+                <span class="min-w-[24px] text-center font-extrabold text-slate-800">${pitchVal}</span>
+                <button
+                  onclick="adjustWordPitch('${escapeAttr(w.id)}', 1)"
+                  ${pitchVal >= maxPitch ? 'disabled' : ''}
+                  class="w-6 h-6 rounded-lg bg-white hover:bg-indigo-50 hover:text-indigo-700 disabled:opacity-40 border border-stone-200 font-bold flex items-center justify-center transition"
+                  title="提高音調核數字"
+                >＋</button>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              ${buildPosBadgesHtml(w.pos, w.transitivity)}
+            </div>
+
+            <!-- 釋義區塊與中文參考 -->
+            <div class="pt-1 space-y-2">
+              ${sensesHtml}
+              <div id="zh-ref-box" class="${w.zhHint ? '' : 'hidden'} p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-xs">
+                ${w.zhHint ? `<span class="font-bold text-indigo-700 mr-1.5">🌐 中文參考：</span><span class="text-slate-800 font-medium">${escapeHtml(w.zhHint)}</span>` : ''}
+              </div>
+              <div class="flex flex-wrap items-center gap-2 pt-0.5">
+                <button id="btn-zh-ref" onclick="fetchChineseReference('${escapeAttr(w.id)}')" class="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 border border-stone-200 text-xs font-semibold transition">
+                  🌐 輔以中文參考
+                </button>
+                <a href="https://translate.google.com/?sl=ja&tl=zh-TW&text=${encodeURIComponent(w.kanji)}&op=translate" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-white hover:bg-stone-50 text-slate-500 border border-stone-200 text-xs font-medium transition">
+                  Google 翻譯 ↗
+                </a>
+              </div>
+            </div>
+
+            ${w.example ? `
+              <div class="p-3 rounded-xl bg-stone-50 border border-stone-200 text-sm text-slate-700 flex items-center justify-between gap-2">
+                <div>
+                  <span class="text-xs font-bold text-slate-400 mr-1.5">例句</span>
+                  <span class="font-jp">${escapeHtml(w.example)}</span>
+                </div>
+                <button onclick="speakJapanese('${escapeAttr(w.example)}', event)" class="shrink-0 text-slate-500 hover:text-indigo-600" title="朗讀例句">🔊</button>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- 右側：清單指派與編輯 -->
+          <div class="md:w-72 shrink-0 bg-stone-50 rounded-2xl border border-stone-200 p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-700">同時加入其他自訂清單</span>
+              <button onclick="closeDictDetail()" class="text-xs text-slate-400 hover:text-slate-600">收合 ✕</button>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              ${customDeckButtons || '<span class="text-xs text-slate-400">尚未建立自訂清單，請至「單字本管理」新增。</span>'}
+            </div>
+            ${study ? `
+              <div class="pt-2 border-t border-stone-200 flex items-center justify-between text-xs text-slate-500">
+                <span>答對 ${study.a}｜答錯 ${study.b}｜查詢 ${study.c}</span>
+                <button onclick="openEditWordModal('${escapeAttr(w.id)}')" class="text-indigo-600 font-bold hover:underline">編輯數據</button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function closeDictDetail() {
+      activeDetailWordId = null;
+      document.getElementById('dict-detail-panel').classList.add('hidden');
+      renderDictList();
+    }
+
+    function openAddWordModal(prefill = '') {
+      document.getElementById('form-add-word').reset();
+      if (prefill) {
+        if (/[\u4e00-\u9faf]/.test(prefill)) {
+          document.getElementById('add-kanji').value = prefill;
+        } else {
+          document.getElementById('add-kana').value = prefill;
+          document.getElementById('add-kanji').value = prefill;
+        }
+      }
+      document.getElementById('modal-add-word').classList.remove('hidden');
+    }
+
+    function submitNewWord(e) {
+      e.preventDefault();
+      const kanji = document.getElementById('add-kanji').value.trim();
+      const kana = document.getElementById('add-kana').value.trim();
+      const pitch = parseInt(document.getElementById('add-pitch').value, 10) || 0;
+      const pos = document.getElementById('add-pos').value;
+      const transitivity = document.getElementById('add-transitivity').value || null;
+      const meaning = document.getElementById('add-meaning').value.trim();
+      const example = document.getElementById('add-example').value.trim();
+      const addToUnfamiliar = document.getElementById('add-to-unfamiliar').checked;
+
+      if (!kanji || !kana || !meaning) return;
+
+      const newId = 'custom_' + Date.now();
+      const newWord = {
+        id: newId,
+        kanji,
+        kana,
+        ruby: null,
+        pitch,
+        pos,
+        transitivity,
+        meaning,
+        example,
+        source: 'custom'
+      };
+
+      appState.customWords.unshift(newWord);
+      saveState();
+
+      if (addToUnfamiliar) {
+        recordWordLookup(newId, true);
+      }
+
+      closeModal('modal-add-word');
+      showToast(`已成功新增單字「${kanji}」`, 'success');
+      activeDetailWordId = newId;
+      renderDictDetail(newId);
+      renderDictList();
+    }
+
+    /*************************************************************************
+     * 7. 分頁 2：單字本管理、動態天數篩選、自訂清單、自由編輯與 JSON 備份
+     *************************************************************************/
+    function setManageTimeFilter(filter) {
+      manageTimeFilter = filter;
+      renderManageView();
+    }
+
+    function setManageDeckFilter(deckId) {
+      manageDeckFilter = deckId;
+      renderManageView();
+    }
+
+    function createNewDeck() {
+      const input = document.getElementById('new-deck-input');
+      const name = input.value.trim();
+      if (!name) {
+        showToast('請輸入清單名稱', 'warning');
+        return;
+      }
+      if (appState.decks.some(d => d.name === name)) {
+        showToast('已存在相同名稱的清單', 'warning');
+        return;
+      }
+      appState.decks.push({
+        id: 'deck_' + Date.now(),
+        name
+      });
+      input.value = '';
+      saveState();
+      renderManageView();
+      showToast(`已建立清單「${name}」`, 'success');
+    }
+
+    function requestDeleteDeck(deckId, event) {
+      if (event) event.stopPropagation();
+      const deck = appState.decks.find(d => d.id === deckId);
+      if (!deck) return;
+
+      openConfirmModal(
+        '刪除自訂清單',
+        `確定要刪除「${deck.name}」清單嗎？（清單內的單字仍會保留在單字本與其他清單中，不會遺失學習紀錄）`,
+        () => {
+          appState.decks = appState.decks.filter(d => d.id !== deckId);
+          Object.values(appState.studyItems).forEach(item => {
+            item.decks = item.decks.filter(id => id !== deckId);
+          });
+          if (manageDeckFilter === deckId) manageDeckFilter = 'all';
+          saveState();
+          renderManageView();
+          showToast(`已刪除清單「${deck.name}」`, 'info');
+        }
+      );
+    }
+
+    function renderManageView() {
+      document.querySelectorAll('.mtf-btn').forEach(btn => {
+        const active = btn.getAttribute('data-mtf') === manageTimeFilter;
+        btn.className = active
+          ? 'mtf-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition bg-rose-600 text-white border-rose-600 shadow-xs'
+          : 'mtf-btn px-3 py-1.5 rounded-xl text-xs font-semibold border transition bg-white text-slate-600 border-stone-200 hover:bg-stone-50';
+      });
+
+      const decksBar = document.getElementById('manage-decks-bar');
+      const allBtnClass = manageDeckFilter === 'all'
+        ? 'bg-indigo-600 text-white border-indigo-600'
+        : 'bg-stone-50 text-slate-700 border-stone-200 hover:bg-stone-100';
+
+      let decksHtml = `
+        <button onclick="setManageDeckFilter('all')" class="px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${allBtnClass}">
+          不限自訂清單
+        </button>
+      `;
+
+      appState.decks.forEach(d => {
+        const count = Object.values(appState.studyItems).filter(i => i.decks.includes(d.id)).length;
+        const active = manageDeckFilter === d.id;
+        decksHtml += `
+          <div class="inline-flex items-center rounded-xl border text-xs font-semibold transition ${
+            active ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-stone-200 hover:bg-stone-50'
+          }">
+            <button onclick="setManageDeckFilter('${escapeAttr(d.id)}')" class="px-3 py-1.5 flex items-center gap-1.5">
+              <span>${escapeHtml(d.name)}</span>
+              <span class="opacity-75">(${count})</span>
+            </button>
+            <button onclick="requestDeleteDeck('${escapeAttr(d.id)}', event)" class="pr-2 pl-1 py-1.5 opacity-60 hover:opacity-100" title="刪除此清單">✕</button>
+          </div>
+        `;
+      });
+      decksBar.innerHTML = decksHtml;
+
+      const keyword = (document.getElementById('manage-search-input').value || '').trim().toLowerCase();
+      let items = Object.values(appState.studyItems).filter(item => {
+        if (!matchesTimeFilter(item, manageTimeFilter)) return false;
+        if (manageDeckFilter !== 'all' && !item.decks.includes(manageDeckFilter)) return false;
+        if (keyword) {
+          return (
+            item.kanji.toLowerCase().includes(keyword) ||
+            item.kana.toLowerCase().includes(keyword) ||
+            item.meaning.toLowerCase().includes(keyword)
+          );
+        }
+        return true;
+      });
+
+      items.sort((x, y) => (y.lastLookedUpAt || 0) - (x.lastLookedUpAt || 0));
+
+      document.getElementById('manage-summary-text').textContent = `目前篩選結果：共 ${items.length} 個單字`;
+
+      const listEl = document.getElementById('manage-words-list');
+      if (items.length === 0) {
+        listEl.innerHTML = `
+          <div class="col-span-full bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center space-y-3">
+            <div class="text-3xl">📚</div>
+            <div class="text-sm font-semibold text-slate-700">目前篩選條件下沒有單字</div>
+            <p class="text-xs text-slate-500">請前往「1. 字典查詞」搜尋日文單字並點擊查閱，系統將自動收錄至「不熟」清單。</p>
+            <button onclick="switchTab('dict')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition">前往字典查詞</button>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = items.map(item => {
+        const weight = computeWordWeight(item);
+        const deckTags = item.decks.map(did => {
+          if (did === UNFAMILIAR_DECK_ID) {
+            return `<span class="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold">不熟</span>`;
+          }
+          const d = appState.decks.find(x => x.id === did);
+          return d ? `<span class="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-semibold">${escapeHtml(d.name)}</span>` : '';
+        }).join('');
+
+        return `
+          <div class="bg-white rounded-2xl border border-stone-200 p-4 shadow-xs flex flex-col justify-between gap-3">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="font-jp text-2xl font-bold text-slate-800">
+                    ${buildRubyHtml(item.kanji, item.kana, item.ruby)}
+                  </div>
+                  <div class="mt-1 text-xs">
+                    ${buildPitchAccentHtml(item.kana, item.pitch)}
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <button onclick="speakJapanese('${escapeAttr(item.kana)}', event)" class="w-8 h-8 rounded-full bg-stone-100 hover:bg-indigo-100 text-slate-600 flex items-center justify-center transition" title="朗讀">🔊</button>
+                  <button onclick="openEditWordModal('${escapeAttr(item.wordId)}')" class="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-indigo-600 hover:text-white text-slate-700 text-xs font-semibold transition">編輯</button>
+                </div>
+              </div>
+
+              <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                ${buildPosBadgesHtml(item.pos, item.transitivity)}
+                ${deckTags}
+              </div>
+
+              <p class="mt-2 text-sm text-slate-700 font-medium">${escapeHtml(item.meaning)}</p>
+            </div>
+
+            <div class="pt-2.5 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+              <div class="flex items-center gap-2">
+                <span class="text-emerald-700 font-semibold">對(a): ${item.a}</span>
+                <span class="text-rose-700 font-semibold">錯(b): ${item.b}</span>
+                <span class="text-amber-700 font-semibold">查(c): ${item.c}</span>
+                <span class="text-slate-400">| 權重 ${weight.toFixed(2)}</span>
+              </div>
+              <span>最後查詢：${formatRelativeTime(item.lastLookedUpAt)}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openEditWordModal(wordId) {
+      const item = appState.studyItems[wordId];
+      if (!item) return;
+
+      document.getElementById('edit-word-id').value = item.wordId;
+      document.getElementById('edit-kanji').value = item.kanji;
+      document.getElementById('edit-kana').value = item.kana;
+      document.getElementById('edit-pitch').value = item.pitch;
+      document.getElementById('edit-pos').value = item.pos;
+      document.getElementById('edit-transitivity').value = item.transitivity || '';
+      document.getElementById('edit-meaning').value = item.meaning;
+      document.getElementById('edit-stat-a').value = item.a;
+      document.getElementById('edit-stat-b').value = item.b;
+      document.getElementById('edit-stat-c').value = item.c;
+
+      const container = document.getElementById('edit-decks-checkboxes');
+      const allDecks = [
+        { id: UNFAMILIAR_DECK_ID, name: '不熟（核心清單）' },
+        ...appState.decks
+      ];
+
+      container.innerHTML = allDecks.map(d => {
+        const checked = item.decks.includes(d.id);
+        return `
+          <label class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
+            d.id === UNFAMILIAR_DECK_ID
+              ? 'border-rose-200 bg-rose-50/70 text-rose-800'
+              : 'border-stone-200 bg-stone-50 text-slate-700'
+          }">
+            <input type="checkbox" name="edit-deck-cb" value="${escapeAttr(d.id)}" ${checked ? 'checked' : ''} class="rounded text-indigo-600" />
+            <span>${escapeHtml(d.name)}</span>
+          </label>
+        `;
+      }).join('');
+
+      document.getElementById('modal-edit-word').classList.remove('hidden');
+    }
+
+    function submitEditWord(e) {
+      e.preventDefault();
+      const wordId = document.getElementById('edit-word-id').value;
+      const item = appState.studyItems[wordId];
+      if (!item) return;
+
+      const newKanji = document.getElementById('edit-kanji').value.trim();
+      const newKana = document.getElementById('edit-kana').value.trim();
+
+      if (newKanji !== item.kanji || newKana !== item.kana) {
+        item.ruby = null;
+      }
+
+      item.kanji = newKanji;
+      item.kana = newKana;
+      item.pitch = parseInt(document.getElementById('edit-pitch').value, 10) || 0;
+      item.pos = document.getElementById('edit-pos').value;
+      item.transitivity = document.getElementById('edit-transitivity').value || null;
+      item.meaning = document.getElementById('edit-meaning').value.trim();
+      item.a = Math.max(0, parseInt(document.getElementById('edit-stat-a').value, 10) || 0);
+      item.b = Math.max(0, parseInt(document.getElementById('edit-stat-b').value, 10) || 0);
+      item.c = Math.max(0, parseInt(document.getElementById('edit-stat-c').value, 10) || 0);
+
+      const selectedDecks = Array.from(document.querySelectorAll('input[name="edit-deck-cb"]:checked')).map(cb => cb.value);
+      item.decks = selectedDecks;
+
+      if (appState.cachedWords[wordId]) {
+        Object.assign(appState.cachedWords[wordId], {
+          kanji: item.kanji,
+          kana: item.kana,
+          pitch: item.pitch,
+          pos: item.pos,
+          transitivity: item.transitivity,
+          meaning: item.meaning
+        });
+      }
+
+      saveState();
+      closeModal('modal-edit-word');
+      showToast(`已更新「${item.kanji}」的資料與學習數據`, 'success');
+
+      if (currentTab === 'manage') renderManageView();
+      if (currentTab === 'dict') {
+        renderDictList();
+        if (activeDetailWordId === wordId) renderDictDetail(wordId);
+      }
+    }
+
+    function confirmRemoveStudyWord() {
+      const wordId = document.getElementById('edit-word-id').value;
+      const item = appState.studyItems[wordId];
+      if (!item) return;
+
+      openConfirmModal(
+        '從單字本移除',
+        `確定要將「${item.kanji}」從您的單字本中移除嗎？此操作將清除該字的答對/答錯與查詢紀錄。`,
+        () => {
+          delete appState.studyItems[wordId];
+          saveState();
+          closeModal('modal-edit-word');
+          showToast(`已移除「${item.kanji}」的學習紀錄`, 'info');
+          if (currentTab === 'manage') renderManageView();
+          if (currentTab === 'dict') {
+            if (activeDetailWordId === wordId) closeDictDetail();
+            renderDictList();
+          }
+        }
+      );
+    }
+
+    function exportJSON() {
+      const payload = {
+        app: 'jp_vocab_studio',
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        data: appState
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `jp-vocab-backup-${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('已匯出 JSON 備份檔案', 'success');
+    }
+
+    function handleImportJSON(event) {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          const importedData = parsed.data ? parsed.data : parsed;
+          if (!importedData || typeof importedData.studyItems !== 'object') {
+            throw new Error('無效的備份格式');
+          }
+
+          openConfirmModal(
+            '還原 JSON 備份',
+            `偵測到備份檔案內含 ${Object.keys(importedData.studyItems).length} 筆學習紀錄與 ${(importedData.decks || []).length} 個自訂清單。確定要覆蓋目前裝置的資料嗎？`,
+            () => {
+              appState.customWords = Array.isArray(importedData.customWords) ? importedData.customWords : [];
+              appState.cachedWords = importedData.cachedWords && typeof importedData.cachedWords === 'object' ? importedData.cachedWords : {};
+              appState.studyItems = importedData.studyItems || {};
+              appState.decks = Array.isArray(importedData.decks) ? importedData.decks : [];
+              saveState();
+              renderManageView();
+              renderDictList();
+              showToast('JSON 備份還原成功！', 'success');
+            }
+          );
+        } catch (err) {
+          showToast('匯入失敗：請確認檔案為正確的 JSON 備份格式', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    /*************************************************************************
+     * 8. 分頁 3：Quizlet 風格雙模式單字卡測驗系統（含隱藏詞性/自他動詞開關）
+     *************************************************************************/
+
+    function computeWordWeight(item) {
+      const a = Number(item.a) || 0;
+      const b = Number(item.b) || 0;
+      const c = Number(item.c) || 0;
+      const total = a + b + c;
+      if (total <= 0) return 0.55;
+      return (b + c) / total + 0.05;
+    }
+
+    function populateQuizScopeSelect() {
+      const select = document.getElementById('quiz-scope-select');
+      const prevVal = select.value;
+
+      let options = `
+        <optgroup label="動態「不熟」時間篩選">
+          <option value="time:all_unfamiliar">全部「不熟」單字</option>
+          <option value="time:today">今日新增/查詢的不熟單字</option>
+          <option value="time:3days">近 3 天不熟單字</option>
+          <option value="time:7days">近 7 天不熟單字</option>
+        </optgroup>
+        <optgroup label="自訂清單（Deck）">
+          ${appState.decks.map(d => `<option value="deck:${escapeAttr(d.id)}">清單：${escapeHtml(d.name)}</option>`).join('')}
+        </optgroup>
+        <optgroup label="其他範圍">
+          <option value="time:all_collected">所有已收錄單字</option>
+        </optgroup>
+      `;
+
+      select.innerHTML = options;
+      if (prevVal && Array.from(select.options).some(o => o.value === prevVal)) {
+        select.value = prevVal;
+      } else {
+        select.value = 'time:all_unfamiliar';
+      }
+    }
+
+    function getFilteredQuizPool() {
+      const scopeVal = document.getElementById('quiz-scope-select').value;
+      const posFilter = document.getElementById('quiz-pos-select').value;
+
+      let candidates = [];
+
+      if (scopeVal.startsWith('time:')) {
+        const tf = scopeVal.slice(5);
+        candidates = Object.values(appState.studyItems)
+          .filter(item => matchesTimeFilter(item, tf))
+          .map(item => item.wordId);
+      } else if (scopeVal.startsWith('deck:')) {
+        const deckId = scopeVal.slice(5);
+        candidates = Object.values(appState.studyItems)
+          .filter(item => item.decks.includes(deckId))
+          .map(item => item.wordId);
+      }
+
+      if (posFilter !== 'all') {
+        candidates = candidates.filter(id => {
+          const w = getWordById(id);
+          if (!w) return false;
+          if (posFilter === '自動詞' || posFilter === '他動詞') return w.transitivity === posFilter;
+          if (posFilter === '動詞') return w.pos && w.pos.includes('動詞');
+          return w.pos === posFilter;
+        });
+      }
+
+      return candidates;
+    }
+
+    function updateQuizPoolPreview() {
+      const pool = getFilteredQuizPool();
+      document.getElementById('quiz-pool-count').textContent = pool.length;
+      document.getElementById('btn-start-quiz').disabled = pool.length === 0;
+      document.getElementById('quiz-empty-hint').classList.toggle('hidden', pool.length > 0);
+    }
+
+    function startQuiz() {
+      const pool = getFilteredQuizPool();
+      if (pool.length === 0) {
+        showToast('沒有符合條件的單字可供測驗', 'warning');
+        return;
+      }
+
+      const mode = document.querySelector('input[name="quiz-mode"]:checked').value;
+      const direction = document.querySelector('input[name="quiz-direction"]:checked').value;
+      const hideFurigana = document.getElementById('quiz-hide-furigana').checked;
+      const hidePos = document.getElementById('quiz-hide-pos').checked;
+
+      quizState = {
+        active: true,
+        mode,
+        direction,
+        hideFurigana,
+        hidePos,
+        pool: [...pool],
+        queue: shuffleArray([...pool]),
+        totalInitial: pool.length,
+        completedCount: 0,
+        attemptsCount: 0,
+        currentWordId: null,
+        currentWeightPct: 0,
+        isFlipped: false,
+        isAnimating: false
+      };
+
+      document.getElementById('quiz-setup-panel').classList.add('hidden');
+      document.getElementById('quiz-complete-panel').classList.add('hidden');
+      document.getElementById('quiz-active-panel').classList.remove('hidden');
+
+      const badge = document.getElementById('quiz-mode-badge');
+      const progWrap = document.getElementById('quiz-progress-wrapper');
+      if (mode === 'elimination') {
+        badge.textContent = '模式 A：消除循環模式';
+        badge.className = 'text-xs font-bold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700';
+        progWrap.classList.remove('hidden');
+      } else {
+        badge.textContent = '模式 B：加權無盡模式';
+        badge.className = 'text-xs font-bold px-3 py-1 rounded-full bg-rose-100 text-rose-700';
+        progWrap.classList.add('hidden');
+      }
+
+      loadNextQuizCard();
+    }
+
+    function exitQuiz() {
+      quizState.active = false;
+      document.getElementById('quiz-active-panel').classList.add('hidden');
+      document.getElementById('quiz-complete-panel').classList.add('hidden');
+      document.getElementById('quiz-setup-panel').classList.remove('hidden');
+      populateQuizScopeSelect();
+      updateQuizPoolPreview();
+    }
+
+    function selectWeightedWordId(pool, previousWordId) {
+      const weights = pool.map(id => {
+        const item = appState.studyItems[id] || { a: 0, b: 0, c: 1 };
+        return { id, w: computeWordWeight(item) };
+      });
+      const totalWeight = weights.reduce((sum, x) => sum + x.w, 0);
+
+      const pickOne = () => {
+        let r = Math.random() * totalWeight;
+        for (const entry of weights) {
+          r -= entry.w;
+          if (r <= 0) {
+            return { id: entry.id, pct: (entry.w / totalWeight) * 100 };
+          }
+        }
+        const last = weights[weights.length - 1];
+        return { id: last.id, pct: (last.w / totalWeight) * 100 };
+      };
+
+      let chosen = pickOne();
+      if (pool.length > 1 && chosen.id === previousWordId) {
+        chosen = pickOne();
+      }
+      return chosen;
+    }
+
+    function loadNextQuizCard() {
+      quizState.isFlipped = false;
+      const inner = document.getElementById('flashcard-inner');
+      inner.classList.remove('is-flipped');
+
+      const wrapper = document.getElementById('swipe-card-wrapper');
+      wrapper.classList.remove('fly-out', 'spring-back');
+      wrapper.style.transform = '';
+      wrapper.style.opacity = '1';
+      document.getElementById('stamp-right').style.opacity = '0';
+      document.getElementById('stamp-left').style.opacity = '0';
+
+      if (quizState.mode === 'elimination') {
+        if (quizState.queue.length === 0) {
+          document.getElementById('quiz-active-panel').classList.add('hidden');
+          document.getElementById('quiz-complete-panel').classList.remove('hidden');
+          document.getElementById('quiz-complete-stats').textContent =
+            `本次共消除 ${quizState.totalInitial} 個單字，總作答 ${quizState.attemptsCount} 次！`;
+          return;
+        }
+        quizState.currentWordId = quizState.queue[0];
+        const pct = Math.round((quizState.completedCount / quizState.totalInitial) * 100);
+        document.getElementById('quiz-progress-bar').style.width = `${pct}%`;
+        document.getElementById('quiz-counter-text').textContent =
+          `剩餘 ${quizState.queue.length} 張（已完成 ${quizState.completedCount} / ${quizState.totalInitial}）`;
+      } else {
+        const chosen = selectWeightedWordId(quizState.pool, quizState.currentWordId);
+        quizState.currentWordId = chosen.id;
+        quizState.currentWeightPct = chosen.pct;
+        document.getElementById('quiz-counter-text').textContent =
+          `題庫 ${quizState.pool.length} 張｜已作答 ${quizState.attemptsCount} 題`;
+      }
+
+      renderFlashcardContent();
+    }
+
+    function renderFlashcardContent() {
+      const w = getWordById(quizState.currentWordId);
+      if (!w) return;
+
+      const study = appState.studyItems[w.id] || { a: 0, b: 0, c: 0 };
+      const isWeighted = quizState.mode === 'weighted';
+      const weightCornerHtml = isWeighted ? `
+        <div class="text-[11px] bg-stone-100 border border-stone-200 px-2.5 py-1 rounded-xl text-slate-600 flex items-center gap-2">
+          <span>對<b>${study.a}</b> / 錯<b>${study.b}</b> / 不熟<b>${study.c}</b></span>
+          <span class="font-bold text-rose-600">權重 ${quizState.currentWeightPct.toFixed(1)}%</span>
+        </div>
+      ` : `
+        <div class="text-[11px] text-slate-400">
+          對 ${study.a}｜錯 ${study.b}｜查詢 ${study.c}
+        </div>
+      `;
+
+      // 若勾選「將詞性與自/他動詞標籤隱藏至反面」，正面一律不顯示詞性與自他動詞標籤
+      const frontPosBadgesHtml = quizState.hidePos
+        ? ''
+        : `<div class="mt-3.5 flex flex-wrap justify-center gap-1.5">${buildPosBadgesHtml(w.pos, w.transitivity)}</div>`;
+
+      const jpFrontHtml = quizState.hideFurigana
+        ? `<div class="font-jp text-4xl sm:text-5xl font-bold text-slate-900 tracking-wide">${escapeHtml(w.kanji)}</div>
+           <div class="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full mt-3">振假名與音調已隱藏（點擊翻面查看）</div>`
+        : `<div class="font-jp text-4xl sm:text-5xl font-bold text-slate-900">${buildRubyHtml(w.kanji, w.kana, w.ruby)}</div>
+           <div class="mt-4 text-lg">${buildPitchAccentHtml(w.kana, w.pitch)}</div>`;
+
+      // 反面一律完整呈現振假名、音調線、詞性與自他動詞標籤
+      const jpFullDetailHtml = `
+        <div class="font-jp text-3xl sm:text-4xl font-bold text-slate-900">${buildRubyHtml(w.kanji, w.kana, w.ruby)}</div>
+        <div class="mt-2.5 text-base">${buildPitchAccentHtml(w.kana, w.pitch)}</div>
+        <div class="mt-3 flex flex-wrap justify-center gap-1.5">${buildPosBadgesHtml(w.pos, w.transitivity)}</div>
+      `;
+
+      const frontEl = document.getElementById('flashcard-front');
+      const backEl = document.getElementById('flashcard-back');
+
+      if (quizState.direction === 'jp-to-zh') {
+        frontEl.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">正面・日文</span>
+            ${weightCornerHtml}
+          </div>
+          <div class="flex-1 flex flex-col items-center justify-center text-center px-2">
+            ${jpFrontHtml}
+            ${frontPosBadgesHtml}
+          </div>
+          <div class="flex items-center justify-between">
+            <button onclick="speakJapanese('${escapeAttr(w.kana)}', event)" class="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-700 text-xs font-semibold transition flex items-center gap-1">
+              <span>🔊</span> 聽發音
+            </button>
+            <span class="text-xs text-slate-400">點擊卡片翻面</span>
+          </div>
+        `;
+
+        backEl.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">反面・詳解</span>
+            ${weightCornerHtml}
+          </div>
+          <div class="flex-1 flex flex-col items-center justify-center text-center px-2 overflow-y-auto">
+            ${jpFullDetailHtml}
+            <div class="mt-4 text-lg sm:text-xl font-bold text-indigo-900 leading-snug">${escapeHtml(w.meaning)}</div>
+            ${w.example ? `<p class="mt-3 text-xs sm:text-sm text-slate-600 font-jp bg-white/80 border border-stone-200 px-3 py-2 rounded-xl max-w-full">${escapeHtml(w.example)}</p>` : ''}
+          </div>
+          <div class="flex items-center justify-between">
+            <button onclick="speakJapanese('${escapeAttr(w.kana)}', event)" class="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition flex items-center gap-1">
+              <span>🔊</span> 朗讀單字
+            </button>
+            <span class="text-xs text-slate-400">左滑不熟｜右滑記得</span>
+          </div>
+        `;
+      } else {
+        frontEl.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">正面・解釋</span>
+            ${weightCornerHtml}
+          </div>
+          <div class="flex-1 flex flex-col items-center justify-center text-center px-3 overflow-y-auto">
+            <div class="text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">${escapeHtml(w.meaning)}</div>
+            ${frontPosBadgesHtml}
+          </div>
+          <div class="flex items-center justify-end">
+            <span class="text-xs text-slate-400">點擊卡片查看日文答案</span>
+          </div>
+        `;
+
+        backEl.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">反面・日文答案</span>
+            ${weightCornerHtml}
+          </div>
+          <div class="flex-1 flex flex-col items-center justify-center text-center px-2 overflow-y-auto">
+            ${jpFullDetailHtml}
+            ${w.example ? `<p class="mt-4 text-xs sm:text-sm text-slate-600 font-jp bg-white/80 border border-stone-200 px-3 py-2 rounded-xl max-w-full">${escapeHtml(w.example)}</p>` : ''}
+          </div>
+          <div class="flex items-center justify-between">
+            <button onclick="speakJapanese('${escapeAttr(w.kana)}', event)" class="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition flex items-center gap-1">
+              <span>🔊</span> 朗讀發音
+            </button>
+            <span class="text-xs text-slate-400">左滑不熟｜右滑記得</span>
+          </div>
+        `;
+      }
+    }
+
+    function flipCurrentCard() {
+      if (!quizState.active || quizState.isAnimating) return;
+      quizState.isFlipped = !quizState.isFlipped;
+      document.getElementById('flashcard-inner').classList.toggle('is-flipped', quizState.isFlipped);
+    }
+
+    function handleQuizAnswer(isRemembered) {
+      const wordId = quizState.currentWordId;
+      if (!wordId) return;
+
+      if (!appState.studyItems[wordId]) {
+        recordWordLookup(wordId, true);
+      }
+
+      const item = appState.studyItems[wordId];
+      if (isRemembered) {
+        item.a = (Number(item.a) || 0) + 1;
+      } else {
+        item.b = (Number(item.b) || 0) + 1;
+        if (!item.decks.includes(UNFAMILIAR_DECK_ID)) {
+          item.decks.push(UNFAMILIAR_DECK_ID);
+        }
+        item.lastLookedUpAt = Date.now();
+      }
+      saveState();
+
+      quizState.attemptsCount++;
+
+      if (quizState.mode === 'elimination') {
+        const finishedId = quizState.queue.shift();
+        if (isRemembered) {
+          quizState.completedCount++;
+        } else {
+          quizState.queue.push(finishedId);
+          if (quizState.queue.length > 2) {
+            const insertIdx = Math.max(1, Math.floor(Math.random() * quizState.queue.length));
+            const moved = quizState.queue.pop();
+            quizState.queue.splice(insertIdx, 0, moved);
+          }
+        }
+      }
+
+      loadNextQuizCard();
+    }
+
+    function triggerSwipeAction(isRemembered) {
+      if (!quizState.active || quizState.isAnimating) return;
+      quizState.isAnimating = true;
+
+      const wrapper = document.getElementById('swipe-card-wrapper');
+      const stampRight = document.getElementById('stamp-right');
+      const stampLeft = document.getElementById('stamp-left');
+
+      wrapper.classList.remove('spring-back');
+      wrapper.classList.add('fly-out');
+
+      if (isRemembered) {
+        stampRight.style.opacity = '1';
+        wrapper.style.transform = 'translateX(140%) rotate(18deg)';
+      } else {
+        stampLeft.style.opacity = '1';
+        wrapper.style.transform = 'translateX(-140%) rotate(-18deg)';
+      }
+      wrapper.style.opacity = '0';
+
+      setTimeout(() => {
+        quizState.isAnimating = false;
+        handleQuizAnswer(isRemembered);
+      }, 280);
+    }
+
+    /*************************************************************************
+     * 9. 單字卡觸控（Touch）、滑鼠（Mouse）拖曳與鍵盤快捷鍵事件
+     *************************************************************************/
+    function initSwipeAndKeyboardHandlers() {
+      const wrapper = document.getElementById('swipe-card-wrapper');
+      const stampRight = document.getElementById('stamp-right');
+      const stampLeft = document.getElementById('stamp-left');
+
+      let isDragging = false;
+      let hasMoved = false;
+      let startX = 0;
+      let startY = 0;
+      let currentDx = 0;
+
+      const onPointerDown = (clientX, clientY, target) => {
+        if (!quizState.active || quizState.isAnimating) return;
+        if (target && target.closest('button')) return;
+
+        isDragging = true;
+        hasMoved = false;
+        startX = clientX;
+        startY = clientY;
+        currentDx = 0;
+        wrapper.classList.remove('spring-back', 'fly-out');
+      };
+
+      const onPointerMove = (clientX, clientY) => {
+        if (!isDragging) return;
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+          hasMoved = true;
+        }
+        if (Math.abs(dx) > 10) {
+          currentDx = dx;
+          const rotate = dx * 0.055;
+          wrapper.style.transform = `translateX(${dx}px) rotate(${rotate}deg)`;
+
+          if (dx > 25) {
+            stampRight.style.opacity = Math.min(1, (dx - 25) / 80).toFixed(2);
+            stampLeft.style.opacity = '0';
+          } else if (dx < -25) {
+            stampLeft.style.opacity = Math.min(1, (-dx - 25) / 80).toFixed(2);
+            stampRight.style.opacity = '0';
+          } else {
+            stampRight.style.opacity = '0';
+            stampLeft.style.opacity = '0';
+          }
+        }
+      };
+
+      const onPointerUp = () => {
+        if (!isDragging) return;
+        isDragging = false;
+
+        if (!hasMoved) {
+          flipCurrentCard();
+          return;
+        }
+
+        const threshold = 95;
+        if (currentDx > threshold) {
+          triggerSwipeAction(true);
+        } else if (currentDx < -threshold) {
+          triggerSwipeAction(false);
+        } else {
+          wrapper.classList.add('spring-back');
+          wrapper.style.transform = 'translateX(0) rotate(0)';
+          stampRight.style.opacity = '0';
+          stampLeft.style.opacity = '0';
+        }
+      };
+
+      wrapper.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        onPointerDown(e.clientX, e.clientY, e.target);
+      });
+      window.addEventListener('mousemove', (e) => onPointerMove(e.clientX, e.clientY));
+      window.addEventListener('mouseup', () => onPointerUp());
+
+      wrapper.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        onPointerDown(e.touches[0].clientX, e.touches[0].clientY, e.target);
+      }, { passive: true });
+      wrapper.addEventListener('touchmove', (e) => {
+        if (!isDragging || e.touches.length !== 1) return;
+        onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+      }, { passive: true });
+      wrapper.addEventListener('touchend', () => onPointerUp());
+      wrapper.addEventListener('touchcancel', () => onPointerUp());
+
+      window.addEventListener('keydown', (e) => {
+        if (!quizState.active || currentTab !== 'quiz') return;
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
+        if (e.code === 'Space') {
+          e.preventDefault();
+          flipCurrentCard();
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          triggerSwipeAction(true);
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          triggerSwipeAction(false);
+        }
+      });
+    }
+
+    /*************************************************************************
+     * 10. 通用工具函式（彈跳視窗、確認對話框、Toast、跳脫字元）
+     *************************************************************************/
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.add('hidden');
+    }
+
+    function openConfirmModal(title, message, onConfirm) {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      confirmCallback = onConfirm;
+      document.getElementById('modal-confirm').classList.remove('hidden');
+    }
+
+    function closeConfirmModal(confirmed) {
+      document.getElementById('modal-confirm').classList.add('hidden');
+      const cb = confirmCallback;
+      confirmCallback = null;
+      if (confirmed && typeof cb === 'function') {
+        cb();
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      let colors = 'bg-slate-800 text-white';
+      if (type === 'success') colors = 'bg-emerald-600 text-white';
+      else if (type === 'warning') colors = 'bg-amber-600 text-white';
+      else if (type === 'error') colors = 'bg-rose-600 text-white';
+
+      toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl shadow-lg text-xs sm:text-sm font-semibold ${colors} transition-all duration-300 translate-y-2 opacity-0`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 2600);
+    }
+
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function escapeAttr(str) {
+      return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    /*************************************************************************
+     * 11. 應用程式初始化
+     *************************************************************************/
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      updateHeaderBadges();
+
+      // 綁定線上即時搜尋輸入事件（含 350ms 防抖與動詞活用提示）
+      const searchInput = document.getElementById('dict-search-input');
+      searchInput.addEventListener('input', (e) => {
+        handleSearchInput(e.target.value);
+      });
+
+      // 預先載入瀏覽器日文語音列表
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+      }
+
+      initSwipeAndKeyboardHandlers();
+      switchTab('dict');
+    });
+  </script>
+</body>
+</html>
